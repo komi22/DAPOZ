@@ -1,0 +1,602 @@
+[
+  {
+    "timestamp": "2025-11-22T05:49:12.727Z",
+    "level": "info",
+    "message": "서버가 종료됩니다",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:53.262Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker stats --no-stream --format \\\"table {{.Container}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\\" | grep -v CONTAINER\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:53.186Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker stats --no-stream --format \"table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\" | grep -v CONTAINER",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:53.171Z",
+    "level": "error",
+    "message": "OpenZiti 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json\"},\"stdout\":\"\",\"stderr\":\"error during connect: Get \\\"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/containers/ziti-controller/json\\\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:52.930Z",
+    "level": "info",
+    "message": "OpenZiti 명령어 실행: docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:52.911Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker ps --format \\\"table {{.Names}}\\\" | grep -v NAMES | wc -l\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:52.846Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker ps --format \"table {{.Names}}\" | grep -v NAMES | wc -l",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.662Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker stats --no-stream --format \\\"table {{.Container}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\\" | grep -v CONTAINER\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.614Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker stats --no-stream --format \"table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\" | grep -v CONTAINER",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.603Z",
+    "level": "error",
+    "message": "OpenZiti 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json\"},\"stdout\":\"\",\"stderr\":\"error during connect: Get \\\"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/containers/ziti-controller/json\\\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.390Z",
+    "level": "info",
+    "message": "OpenZiti 명령어 실행: docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.266Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker ps --format \\\"table {{.Names}}\\\" | grep -v NAMES | wc -l\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:48:09.195Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker ps --format \"table {{.Names}}\" | grep -v NAMES | wc -l",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:43:49.905Z",
+    "level": "error",
+    "message": "SaltStack 대상 목록 조회 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i salt_master salt-key -L\"},\"stdout\":\"\",\"stderr\":\"error during connect: Get \\\"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/containers/salt_master/json\\\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:43:49.609Z",
+    "level": "info",
+    "message": "Salt 명령어 실행: docker exec -i salt_master salt-key -L",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:43:49.604Z",
+    "level": "info",
+    "message": "SaltStack 대상 목록 조회 시작",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:43:34.035Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker stats --no-stream --format \\\"table {{.Container}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\\" | grep -v CONTAINER\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:43:33.944Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker stats --no-stream --format \"table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\" | grep -v CONTAINER",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:43:33.924Z",
+    "level": "error",
+    "message": "OpenZiti 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json\"},\"stdout\":\"\",\"stderr\":\"error during connect: Get \\\"http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/containers/ziti-controller/json\\\": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:43:33.461Z",
+    "level": "info",
+    "message": "OpenZiti 명령어 실행: docker exec -i ziti-controller /openziti/ziti edge list sessions --output-json",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:43:33.442Z",
+    "level": "error",
+    "message": "시스템 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":255,\"killed\":false,\"signal\":null,\"cmd\":\"docker ps --format \\\"table {{.Names}}\\\" | grep -v NAMES | wc -l\"},\"stdout\":\"\",\"stderr\":\"'grep'��(��) ���� �Ǵ� �ܺ� ����, ������ �� �ִ� ���α׷�, �Ǵ�\\r\\n��ġ ������ �ƴմϴ�.\\r\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-22T05:43:33.338Z",
+    "level": "info",
+    "message": "시스템 명령어 실행: docker ps --format \"table {{.Names}}\" | grep -v NAMES | wc -l",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-22T05:42:52.600Z",
+    "level": "info",
+    "message": "백엔드 서버가 포트 3001에서 실행 중입니다",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:54:40.680Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:54:39.862Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:54:39.854Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:53:40.646Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:53:39.866Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:53:39.858Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:52:40.614Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:52:39.883Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:52:39.859Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:51:40.602Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:51:39.868Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:51:39.862Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:50:40.624Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:50:39.863Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:50:39.855Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:49:40.615Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:49:39.876Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:49:39.867Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:48:40.598Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:48:39.867Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:48:39.858Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:47:40.670Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:47:39.873Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:47:39.865Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:46:40.651Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:46:39.876Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:46:39.866Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:45:40.632Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:45:39.856Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:45:39.847Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:44:40.643Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:44:39.873Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:44:39.861Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:43:40.626Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:43:39.868Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:43:39.857Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:42:40.616Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:42:39.859Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:42:39.850Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:41:40.594Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:41:39.863Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:41:39.848Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:40:40.661Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:40:39.882Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:40:39.865Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:39:40.625Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:39:39.863Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:39:39.854Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:38:40.986Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:38:39.867Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:38:39.858Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:37:40.666Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:37:39.875Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:37:39.864Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:36:40.643Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:36:39.893Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:36:39.867Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:35:40.696Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:35:39.861Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:35:39.851Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:34:40.638Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:34:39.875Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:34:39.865Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:33:40.608Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:33:39.879Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:33:39.869Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:32:40.605Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:32:39.863Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:32:39.852Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:31:40.619Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:31:39.889Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:31:39.852Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:30:40.646Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:30:39.868Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:30:39.854Z",
+    "level": "info",
+    "message": "Keycloak 명령어 실행: docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080",
+    "error": null
+  },
+  {
+    "timestamp": "2025-11-10T07:29:40.648Z",
+    "level": "error",
+    "message": "Keycloak 명령어 실행 실패",
+    "error": "{\"error\":{\"code\":1,\"killed\":false,\"signal\":null,\"cmd\":\"docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --realm master --server http://localhost:8080\"},\"stdout\":\"\",\"stderr\":\"Session has expired. Login again with 'kcadm.sh config credentials'\\n\"}"
+  },
+  {
+    "timestamp": "2025-11-10T07:29:39.866Z",
+    "level": "info",
+    "message": "헬스체크 요청 수신",
+    "error": null
+  }
+]

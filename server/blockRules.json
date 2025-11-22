@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1762751428224-m2i70v685",
+    "type": "action",
+    "value": "LOGIN",
+    "reason": "조합 차단 규칙",
+    "createdAt": "2025-11-10T05:10:28.224Z",
+    "enabled": true
+  },
+  {
+    "id": "1762751440205-pg9lmcqjp",
+    "type": "ip",
+    "value": "127.0.0.1",
+    "reason": "조합 차단 규칙",
+    "createdAt": "2025-11-10T05:10:40.205Z",
+    "enabled": true
+  }
+]
