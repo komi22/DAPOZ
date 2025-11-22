@@ -2080,7 +2080,7 @@ diagnosisRouter.post('/evaluate', async (req, res) => {
     let threatScore = parseFloat((sum / NORMALIZER).toFixed(2));
 
     if (detected.length === 0) {
-      threatScore = 1;
+      threatScore = 0;
     }
 
     //const checklistScore = Number(req.body?.checklistScore || 0); // 0~1
@@ -2093,7 +2093,7 @@ diagnosisRouter.post('/evaluate', async (req, res) => {
       checklistScore = 0;
     }
     // const zeroTrustScore = parseFloat((checklistScore * threatScore).toFixed(2));
-    const zeroTrustRaw = checklistScore * threatScore;
+    const zeroTrustRaw = checklistScore * (1 / (1 + threatScore));
     const zeroTrustScore = Math.round(zeroTrustRaw * 100) / 100; // 표시용 2자리 반올림
 
     let level = '', meaning = '';
