@@ -18,7 +18,7 @@ npm run dev
 node server/index.cjs
 ```
 
-## 2) Init Packages
+### 2) Init Packages
 (under development)  
 ```(Administrator privileges) install.bat```  
 ```(Administrator privileges) run.bat```
