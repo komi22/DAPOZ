@@ -670,10 +670,8 @@ const minionCommandQueue = new Map()
 
 const cleanupCommandQueue = () => {
   const now = Date.now()
-  const MAX_QUEUE_AGE = 300000
-  
-  for (const [target, queueInfo] of minionCommandQueue.entries()) {
-    if (!queueInfo.executing && (now - queueInfo.lastCommandTime) > MAX_QUEUE_AGE) {
+  for (const [target, queue] of minionCommandQueue.entries()) {
+    if (queue.waiting.length === 0 && !queue.executing && (now - queue.lastCommandTime) > 300000) {
       minionCommandQueue.delete(target)
     }
   }
@@ -681,50 +679,73 @@ const cleanupCommandQueue = () => {
 
 setInterval(cleanupCommandQueue, 600000)
 
-const waitForMinionReady = async (target) => {
-  const queueInfo = minionCommandQueue.get(target) || { executing: false, lastCommandTime: 0 }
-  
-  if (queueInfo.executing) {
-    saveLog('info', `Minion ${target} 명령어 실행 대기 중...`)
-    for (let i = 0; i < 60; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const currentQueueInfo = minionCommandQueue.get(target)
-      if (!currentQueueInfo || !currentQueueInfo.executing) {
-        break
-      }
-    }
+const isGpoCommand = (command) => {
+  if (!command) return false
+  const trimmed = String(command).trim()
+  return trimmed.includes('lgpo.set') || 
+         trimmed.includes('lgpo.get') || 
+         trimmed.includes('gpupdate') ||
+         (trimmed.startsWith('cmd.run') && (
+           trimmed.includes('gpupdate') || 
+           trimmed.includes('lgpo')
+         ))
+}
+
+const waitForMinionReady = async (target, command) => {
+  if (!minionCommandQueue.has(target)) {
+    minionCommandQueue.set(target, {
+      executing: false,
+      waiting: [],
+      lastCommandTime: 0,
+      currentCommand: null
+    })
   }
   
-  const timeSinceLastCommand = Date.now() - queueInfo.lastCommandTime
-  if (timeSinceLastCommand < 3000) {
-    await new Promise(resolve => setTimeout(resolve, 3000 - timeSinceLastCommand))
+  const queue = minionCommandQueue.get(target)
+  
+  if (queue.executing) {
+    return new Promise((resolve) => {
+      queue.waiting.push({ resolve, command: command ? command.substring(0, 100) : null })
+      saveLog('info', `Minion ${target} 명령어 실행 대기 중... (현재 실행 중: ${queue.currentCommand || '알 수 없음'}, 대기 중: ${queue.waiting.length}개)`)
+    })
   }
   
-  minionCommandQueue.set(target, { executing: true, lastCommandTime: Date.now() })
+  const timeSinceLastCommand = Date.now() - queue.lastCommandTime
+  if (timeSinceLastCommand < 100) {
+    await new Promise(resolve => setTimeout(resolve, 100 - timeSinceLastCommand))
+  }
+  
+  queue.executing = true
+  queue.lastCommandTime = Date.now()
+  queue.currentCommand = command ? command.substring(0, 100) : null
 }
 
 const markMinionCommandComplete = (target) => {
-  const queueInfo = minionCommandQueue.get(target) || { executing: false, lastCommandTime: 0 }
-  queueInfo.executing = false
-  queueInfo.lastCommandTime = Date.now()
-  minionCommandQueue.set(target, queueInfo)
+  const queue = minionCommandQueue.get(target)
+  if (!queue) return
+  
+  queue.executing = false
+  queue.currentCommand = null
+  
+  if (queue.waiting.length > 0) {
+    const next = queue.waiting.shift()
+    queue.executing = true
+    queue.lastCommandTime = Date.now()
+    queue.currentCommand = next.command
+    next.resolve()
+  }
 }
 
-const checkMinionConnection = async (target, maxRetries = 2) => {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const pingCommand = `docker exec -i salt_master salt "${target}" test.ping --timeout=5`
-      const result = await execPromiseWithTimeout(pingCommand, 10000)
-      
-      if (result.stdout && (result.stdout.includes('True') || result.stdout.includes('true'))) {
-        return true
-      }
-    } catch (error) {
-      if (i < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
-        continue
-      }
+const checkMinionConnection = async (target, maxRetries = 1) => {
+  try {
+    const pingCommand = `docker exec -i salt_master salt "${target}" test.ping --timeout=3`
+    const result = await execPromiseWithTimeout(pingCommand, 5000)
+    
+    if (result.stdout && (result.stdout.includes('True') || result.stdout.includes('true'))) {
+      return true
     }
+  } catch (error) {
+    return false
   }
   return false
 }
@@ -754,8 +775,9 @@ function writeDepartments(departments) {
 }
 
 app.post('/api/device/info', async (req, res) => {
+  let target = null
   try {
-    const { target } = req.body
+    target = req.body.target
     
     if (!target) {
       return res.status(400).json({ 
@@ -766,11 +788,24 @@ app.post('/api/device/info', async (req, res) => {
     
     saveLog('info', `디바이스 정보 수집 시작: ${target}`)
     
+    // 큐 관리 추가 (Salt Minion 단일 스레드 제약)
+    await waitForMinionReady(target, 'grains.items')
+    
     const command = `docker exec -i salt_master salt "${target}" grains.items --out=json`
     saveLog('info', `Salt 명령어 실행: ${command}`)
     
     const result = await execPromise(command)
-    saveLog('info', `Salt 명령어 실행 성공: ${command}`, result)
+    
+    const hasError = (result.stderr && result.stderr.includes('ERROR')) ||
+                     (result.stdout && result.stdout.includes('Minion did not return'))
+    
+    if (hasError) {
+      saveLog('warning', `Salt 명령어 실행 실패: ${command}`, result)
+    } else {
+      saveLog('info', `Salt 명령어 실행 성공: ${command}`)
+    }
+    
+    markMinionCommandComplete(target)
     
     // JSON 파싱
     let deviceInfo = {}
@@ -810,6 +845,14 @@ app.post('/api/device/info', async (req, res) => {
     })
     
   } catch (error) {
+    if (target) {
+      markMinionCommandComplete(target)
+    }
+    
+    if (error.killed || (error.error && error.error.message && error.error.message.includes('timeout'))) {
+      saveLog('warning', `Minion ${target} 명령어 타임아웃`)
+    }
+    
     saveLog('error', '디바이스 정보 수집 실패', error)
     res.status(500).json({
       success: false,
@@ -833,34 +876,20 @@ app.post('/api/device/execute', async (req, res) => {
     target = targets[0]
     const trimmed = String(command).trim()
     
-    // 그룹 타겟팅 확인
     isGroupTarget = target.startsWith('-G')
     
-    // 큐 관리 - 그룹 타겟팅이 아닐 때만 적용
     if (!isGroupTarget) {
-      await waitForMinionReady(target)
+      await waitForMinionReady(target, trimmed)
     }
 
-    // Minion 연결 확인 - 그룹 타겟팅이 아닐 때만 적용
     if (!isGroupTarget) {
-      saveLog('info', `Minion 연결 확인 시작: ${target}`)
-      const isConnected = await checkMinionConnection(target)
-      
-      if (!isConnected) {
-        saveLog('warning', `Minion 연결 확인 실패: ${target} (명령어 실행 계속 진행)`)
-      } else {
-        saveLog('info', `Minion 연결 확인 성공: ${target}`)
-        // 연결 확인 후 대기 시간
-        await new Promise(resolve => setTimeout(resolve, 2500))
-      }
+      saveLog('info', `디바이스 명령어 실행: ${target}`)
     } else {
       saveLog('info', `그룹 타겟팅 명령어 실행: ${target}`)
     }
 
-    // cmd.run 명령어 처리
     if (trimmed.startsWith('cmd.run')) {
       const argsPart = trimmed.replace(/^cmd\.run\s+/, '')
-      // shell 옵션 파싱
       let payload = argsPart
       if ((payload.startsWith("'") && payload.endsWith("'")) || (payload.startsWith('"') && payload.endsWith('"'))) {
         payload = payload.substring(1, payload.length - 1)
@@ -886,12 +915,10 @@ app.post('/api/device/execute', async (req, res) => {
         if (groupMatch) {
           dockerArgs.push('-G', `department:${groupMatch[1]}`)
     } else {
-          // 파싱 실패 시 원본에서 department:부서명만 추출
           const altMatch = target.match(/department:(\w+)/)
           if (altMatch) {
             dockerArgs.push('-G', `department:${altMatch[1]}`)
           } else {
-            // 최후의 수단: -G와 department:부서명을 분리하여 전달
             const parts = target.replace(/-G\s+['"]?/, '').replace(/['"]$/, '').split(':')
             if (parts.length === 2) {
               dockerArgs.push('-G', `${parts[0]}:${parts[1]}`)
@@ -901,7 +928,6 @@ app.post('/api/device/execute', async (req, res) => {
           }
         }
       } else {
-        // 개별 타겟팅: IP 주소만
         dockerArgs.push(target)
       }
       
@@ -912,17 +938,27 @@ app.post('/api/device/execute', async (req, res) => {
       }
 
       const fullForLog = `docker ${dockerArgs.map(a => (a.includes(' ') ? '"' + a + '"' : a)).join(' ')}`
-      saveLog('info', `디바이스 명령어 실행: ${trimmed}, 대상: ${target}`)
       saveLog('info', `Salt 명령어 실행(spawn): ${fullForLog}`)
 
-      // 타임아웃 조정
       const isLongRunningCommand = payload.includes('gpupdate') || payload.includes('Get-') || payload.includes('ConvertTo-Json')
-      const timeout = isLongRunningCommand ? 120000 : 90000 // 2분 또는 90초
+      const timeout = isLongRunningCommand ? 120000 : 90000
       
       const result = await spawnPromiseWithTimeout('docker', dockerArgs, {}, timeout)
-      saveLog('info', `Salt 명령어 실행 성공(spawn): ${fullForLog}`, result)
+      
+      const isRuleNotFound = result.stdout && (
+        result.stdout.includes('지정된 조건과 일치하는 규칙이 없습니다') ||
+        result.stdout.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다')
+      )
+      
+      const hasError = (!isRuleNotFound && result.stderr && result.stderr.includes('ERROR')) ||
+                       (result.stdout && result.stdout.includes('Minion did not return'))
+      
+      if (hasError) {
+        saveLog('warning', `Salt 명령어 실행 실패(spawn): ${fullForLog}`, result)
+      } else {
+        saveLog('info', `Salt 명령어 실행 성공(spawn): ${fullForLog}`)
+      }
 
-      // 명령어 실행 완료 표시 - 큐 관리
       if (!isGroupTarget) {
         markMinionCommandComplete(target)
       }
@@ -933,77 +969,65 @@ app.post('/api/device/execute', async (req, res) => {
       })
     }
 
-    // 그 외 명령어 처리
     const isLongRunningCommand = trimmed.includes('lgpo.set') || trimmed.includes('lgpo.get') || trimmed.includes('gpupdate')
-    const timeout = isLongRunningCommand ? 150000 : 90000 // 2.5분 또는 90초
+    const timeout = isLongRunningCommand ? 150000 : 90000
     
-    // 그룹 타겟팅 지원
     let targetArg = ''
     if (isGroupTarget) {
-      // 그룹 타겟팅: -G 'department:HR' 형식 파싱
       const groupMatch = target.match(/-G\s+(?:'|")?department:(\w+)(?:'|")?/)
       if (groupMatch) {
-        // spawn 방식이 성공한 형식 사용: -G department:HR (따옴표 없이)
         targetArg = `-G department:${groupMatch[1]}`
       } else {
-        // 파싱 실패 시 원본에서 department:부서명만 추출 시도
         const altMatch = target.match(/department:(\w+)/)
         if (altMatch) {
           targetArg = `-G department:${altMatch[1]}`
         } else {
-          // 최후의 수단: 따옴표 제거 후 전달 (spawn 방식과 동일)
           const cleaned = target.replace(/-G\s+['"]?/, '-G ').replace(/['"]$/, '').trim()
           const deptValue = target.replace(/-G\s+['"]?department:/, '').replace(/['"]$/, '')
           targetArg = deptValue ? `-G department:${deptValue}` : (cleaned.startsWith('-G') ? cleaned : `-G ${cleaned}`)
         }
       }
     } else {
-      // 개별 타겟팅: IP 주소를 큰따옴표로 감싸기
       targetArg = `"${target}"`
     }
     
-    let finalCommand = trimmed
-    
-    // --timeout=90 추가
-    const fullCommand = `docker exec -i salt_master salt ${targetArg} ${finalCommand} --timeout=90`
+    const fullCommand = `docker exec -i salt_master salt ${targetArg} ${trimmed} --timeout=90`
     
     saveLog('info', `디바이스 명령어 실행: ${trimmed}, 대상: ${target}`)
     saveLog('info', `Salt 명령어 실행(exec): ${fullCommand}`)
     
     const result = await execPromiseWithTimeout(fullCommand, timeout)
     
-    // 그룹 타겟팅 오류 확인
-    if (isGroupTarget && result.stdout && result.stdout.includes('No minions matched the target')) {
-      saveLog('warning', `그룹 타겟팅 매칭 실패: ${targetArg}. stdout: ${result.stdout}`)
+    const hasError = (result.stderr && result.stderr.includes('ERROR')) ||
+                     (result.stdout && result.stdout.includes('Minion did not return')) ||
+                     (isGroupTarget && result.stdout && result.stdout.includes('No minions matched the target'))
+    
+    if (hasError) {
+      saveLog('warning', `Salt 명령어 실행 실패: ${fullCommand}`, result)
     } else {
-      saveLog('info', `Salt 명령어 실행 성공: ${fullCommand}`, result)
+      saveLog('info', `Salt 명령어 실행 성공: ${fullCommand}`)
     }
     
-    // Minion 응답 확인
-    if (result.stdout && result.stdout.includes('Minion did not return')) {
-      saveLog('warning', `Minion 응답 없음: ${target}`)
-    }
-    
-    // 명령어 실행 완료 표시 - 큐 관리
     if (!isGroupTarget) {
       markMinionCommandComplete(target)
     }
     
-    // 백엔드에서 stdout/stderr를 직접 반환
     res.json({
       stdout: result.stdout || '',
       stderr: result.stderr || ''
     })
     
   } catch (error) {
-    // 에러 시에도 큐 해제
     if (target && !isGroupTarget) {
       markMinionCommandComplete(target)
     }
     
+    if (error.killed || (error.error && error.error.message && error.error.message.includes('timeout'))) {
+      saveLog('warning', `Minion ${target} 명령어 타임아웃`)
+    }
+    
     saveLog('error', '디바이스 명령어 실행 실패', error)
     
-    // 에러 시에도 실제 출력을 반환
     res.json({
       stdout: error.stdout || '',
       stderr: error.stderr || error.error?.message || '명령어 실행 실패'
@@ -1033,7 +1057,6 @@ app.get('/api/device/department/:target', async (req, res) => {
   }
 })
 
-// 부서 정보 설정
 app.post('/api/device/department', async (req, res) => {
   try {
     const { target, department } = req.body
@@ -1048,18 +1071,28 @@ app.post('/api/device/department', async (req, res) => {
     const departments = readDepartments()
     departments[target] = department
     
-    if (writeDepartments(departments)) {
-      saveLog('info', `부서 정보 설정 성공: ${target} -> ${department}`)
-      res.json({
-        success: true,
-        message: '부서가 설정되었습니다'
-      })
-    } else {
-      res.status(500).json({
+    if (!writeDepartments(departments)) {
+      return res.status(500).json({
         success: false,
         error: '부서 정보 저장 실패'
       })
     }
+    
+    try {
+      await waitForMinionReady(target, 'grains.setval')
+      const grainsCommand = `docker exec -i salt_master salt "${target}" grains.setval department "${department}"`
+      await execPromise(grainsCommand)
+      markMinionCommandComplete(target)
+      saveLog('info', `Salt grains에 부서 정보 설정: ${target} -> ${department}`)
+    } catch (grainsError) {
+      saveLog('warning', `Salt grains 설정 실패 (파일 저장은 성공): ${target}`, grainsError)
+    }
+    
+    saveLog('info', `부서 정보 설정 성공: ${target} -> ${department}`)
+    res.json({
+      success: true,
+      message: '부서가 설정되었습니다'
+    })
     
   } catch (error) {
     saveLog('error', '부서 정보 설정 실패', error)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import {RefreshCw, Play, ChevronDown, ChevronUp, Shield, HardDrive, Download, X, Eye, XCircle} from 'lucide-react'
 import { saltApi, deviceApi } from '../utils/api'
 
@@ -61,7 +61,6 @@ const DeviceControl: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState('전체')
   const [currentPage, setCurrentPage] = useState(1)
   const [securityStatuses, setSecurityStatuses] = useState<Record<string, SecurityStatus>>({})
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([])
   const [showPolicyStatus, setShowPolicyStatus] = useState(false)
   const [selectedDepartmentTarget, setSelectedDepartmentTarget] = useState<string>('')
   const [selectedDepartmentType, setSelectedDepartmentType] = useState<'individual' | 'group'>('individual')
@@ -77,7 +76,8 @@ const DeviceControl: React.FC = () => {
     }
     lastChecked: string
   }>>({})
-  const [refreshingPolicy, setRefreshingPolicy] = useState(false)
+  const [refreshingGpoPolicy, setRefreshingGpoPolicy] = useState(false)
+  const [refreshingFirewallRules, setRefreshingFirewallRules] = useState(false)
   const [commandExecutionType, setCommandExecutionType] = useState<'individual' | 'group'>('individual')
   const [selectedGroupDepartment, setSelectedGroupDepartment] = useState<string>('HR')
   const [loadingSecurityStatus, setLoadingSecurityStatus] = useState<Record<string, boolean>>({})
@@ -86,14 +86,11 @@ const DeviceControl: React.FC = () => {
   const [selectedCommandResult, setSelectedCommandResult] = useState<{commandKey: string, result: any} | null>(null)
   const [commandResults, setCommandResults] = useState<Record<string, any>>({})
   const [showCommandDetails, setShowCommandDetails] = useState(false)
+  const [showScreensaverModal, setShowScreensaverModal] = useState(false)
+  const [screensaverMinutes, setScreensaverMinutes] = useState(1)
+  const [pendingScreensaverCommand, setPendingScreensaverCommand] = useState<any>(null)
   
   const itemsPerPage = 10
-  
-  const selectedDeviceRef = useRef<string>('')
-  
-  useEffect(() => {
-    selectedDeviceRef.current = selectedDevice
-  }, [selectedDevice])
 
   const fetchTargets = async (includeDeviceInfo: boolean = true) => {
     setRefreshingTargets(true)
@@ -130,31 +127,41 @@ const DeviceControl: React.FC = () => {
 
       const newDeviceData: Record<string, DeviceInfo> = {}
       
-      for (const target of onlineTargets) {
+      // 병렬 처리로 모든 디바이스 정보 수집 (성능 개선)
+      const deviceInfoPromises = onlineTargets.map(async (target) => {
         try {
-          if (onlineTargets.length > 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          } else {
-            await new Promise(resolve => setTimeout(resolve, 2000))
-          }
-          
           const response = await deviceApi.getDeviceInfo(target.id)
           if (response.data?.success && response.data.data) {
-            newDeviceData[target.id] = response.data.data
+            const deviceInfo: DeviceInfo = response.data.data
+            
+            // 부서 정보도 병렬로 조회
             try {
-              await new Promise(resolve => setTimeout(resolve, 1000))
               const deptResponse = await deviceApi.getDepartment(target.id)
               if (deptResponse.data?.success && deptResponse.data.department) {
-                newDeviceData[target.id].department = deptResponse.data.department
+                deviceInfo.department = deptResponse.data.department
               }
             } catch (e) {
+              // 부서 정보 조회 실패는 무시
             }
+            
+            return { targetId: target.id, deviceInfo }
           }
+          return null
         } catch (error) {
           console.error(`디바이스 ${target.id} 정보 수집 실패:`, error)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          return null
         }
-      }
+      })
+      
+      // 모든 Promise 완료 대기
+      const results = await Promise.all(deviceInfoPromises)
+      
+      // 결과를 newDeviceData에 병합
+      results.forEach(result => {
+        if (result && result.deviceInfo) {
+          newDeviceData[result.targetId] = result.deviceInfo
+        }
+      })
       
       setDevices(prevDevices => {
         const updatedDevices = { ...prevDevices, ...newDeviceData }
@@ -209,125 +216,139 @@ const DeviceControl: React.FC = () => {
     setLoadingSecurityStatus(prev => ({ ...prev, [target]: true }))
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const defenderCommand = `cmd.run "Get-MpComputerStatus | Select-Object AntivirusEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled | ConvertTo-Json" shell=powershell`
+      const bitlockerCommand = `cmd.run "Get-BitLockerVolume | Select-Object MountPoint,VolumeStatus,ProtectionStatus | ConvertTo-Json" shell=powershell`
+      const installedUpdatesCommand = `cmd.run "Get-HotFix | Select-Object -First 20 HotFixID,Description,InstalledOn,InstalledBy | ConvertTo-Json" shell=powershell`
       
+      const [defenderResponse, bitlockerResponse, updatesResponse] = await Promise.all([
+        deviceApi.executeCommand(defenderCommand, [target]).catch(e => {
+          console.error('Defender 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        }),
+        deviceApi.executeCommand(bitlockerCommand, [target]).catch(e => {
+          console.error('BitLocker 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        }),
+        deviceApi.executeCommand(installedUpdatesCommand, [target]).catch(e => {
+          console.error('Windows Update 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        })
+      ])
+      
+      // Defender 데이터 파싱
       let defenderData = null
-      let defenderResponse = null
-      try {
-        const defenderCommand = `cmd.run "Get-MpComputerStatus | Select-Object AntivirusEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled | ConvertTo-Json" shell=powershell`
-        defenderResponse = await deviceApi.executeCommand(defenderCommand, [target])
-        
-        if (defenderResponse?.data?.stdout) {
-          const defenderOutput = defenderResponse.data.stdout.trim()
-          if (defenderOutput.includes('Minion did not return') || defenderOutput.includes('No response')) {
-            console.error('Defender: Minion 응답 없음')
-            defenderData = null
-          } else {
-            const cleanedOutput = defenderOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
-            const jsonMatch = cleanedOutput.match(/\{[\s\S]*\}/)
-            if (jsonMatch) {
-              try {
-                defenderData = JSON.parse(jsonMatch[0])
-              } catch (parseError) {
-                console.error('Defender JSON 파싱 실패:', parseError)
-                defenderData = null
+      if (defenderResponse?.data?.stdout) {
+        const defenderOutput = defenderResponse.data.stdout.trim()
+        if (defenderOutput && 
+            !defenderOutput.includes('Minion did not return') && 
+            !defenderOutput.includes('No response') &&
+            !defenderOutput.includes('ERROR')) {
+          const cleanedOutput = defenderOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
+          const jsonMatch = cleanedOutput.match(/\{[\s\S]*\}/)
+          if (jsonMatch && jsonMatch[0].length > 10) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0])
+              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                defenderData = parsed
               }
+            } catch (parseError) {
+              console.error('Defender JSON 파싱 실패:', parseError)
             }
           }
         }
-      } catch (e) {
-        console.error('Defender 상태 조회 실패:', e)
       }
       
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      // BitLocker 데이터 파싱
       let bitlockerData = null
-      let bitlockerResponse = null
-      try {
-        const bitlockerCommand = `cmd.run "Get-BitLockerVolume | Select-Object MountPoint,VolumeStatus,ProtectionStatus | ConvertTo-Json" shell=powershell`
-        bitlockerResponse = await deviceApi.executeCommand(bitlockerCommand, [target])
+      let bitlockerCompleted = false
+      if (bitlockerResponse?.data?.stdout) {
+        const bitlockerOutput = bitlockerResponse.data.stdout.trim()
+        bitlockerCompleted = !bitlockerOutput.includes('Minion did not return') && 
+                             !bitlockerOutput.includes('No response')
         
-        if (bitlockerResponse?.data?.stdout) {
-          const bitlockerOutput = bitlockerResponse.data.stdout.trim()
-          if (bitlockerOutput.includes('Minion did not return') || bitlockerOutput.includes('No response')) {
-            console.error('BitLocker: Minion 응답 없음')
-            bitlockerData = null
-          } else {
-            const cleanedOutput = bitlockerOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
-            const jsonMatch = cleanedOutput.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
-            if (jsonMatch) {
-              try {
-                const parsed = JSON.parse(jsonMatch[0])
-                bitlockerData = Array.isArray(parsed) ? parsed[0] : parsed
-              } catch (parseError) {
-                console.error('BitLocker JSON 파싱 실패:', parseError)
+        if (bitlockerOutput && bitlockerCompleted && !bitlockerOutput.includes('ERROR')) {
+          const cleanedOutput = bitlockerOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
+          const jsonMatch = cleanedOutput.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0])
+              if (parsed) {
+                if (Array.isArray(parsed)) {
+                  bitlockerData = parsed.length > 0 ? parsed[0] : { MountPoint: 'N/A', VolumeStatus: 'N/A', ProtectionStatus: 'Off' }
+                } else if (typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                  bitlockerData = parsed
+                } else {
+                  bitlockerData = { MountPoint: 'N/A', VolumeStatus: 'N/A', ProtectionStatus: 'Off' }
+                }
+              } else {
+                bitlockerData = { MountPoint: 'N/A', VolumeStatus: 'N/A', ProtectionStatus: 'Off' }
               }
+            } catch (parseError) {
+              console.error('BitLocker JSON 파싱 실패:', parseError)
             }
+          } else if (bitlockerCompleted) {
+            bitlockerData = { MountPoint: 'N/A', VolumeStatus: 'N/A', ProtectionStatus: 'Off' }
           }
+        } else if (bitlockerCompleted) {
+          bitlockerData = { MountPoint: 'N/A', VolumeStatus: 'N/A', ProtectionStatus: 'Off' }
         }
-      } catch (e) {
-        console.error('BitLocker 상태 조회 실패:', e)
       }
       
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      // Windows Update 데이터 파싱
       let updatesData = null
-      let updatesResponse = null
-      try {
-        const installedUpdatesCommand = `cmd.run "Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 20 HotFixID,Description,InstalledOn,InstalledBy | ConvertTo-Json" shell=powershell`
-        updatesResponse = await deviceApi.executeCommand(installedUpdatesCommand, [target])
+      let updatesCompleted = false
+      if (updatesResponse?.data?.stdout) {
+        const updatesOutput = updatesResponse.data.stdout.trim()
+        updatesCompleted = !updatesOutput.includes('Minion did not return') && 
+                           !updatesOutput.includes('No response')
         
-        if (updatesResponse?.data?.stdout) {
-          const updatesOutput = updatesResponse.data.stdout.trim()
-          if (updatesOutput.includes('Minion did not return') || updatesOutput.includes('No response')) {
-            console.error('Windows Update: Minion 응답 없음')
-            updatesData = null
-          } else {
-            const cleanedOutput = updatesOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
-            const jsonMatch = cleanedOutput.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
-            if (jsonMatch) {
-              try {
-                const parsed = JSON.parse(jsonMatch[0])
+        if (updatesOutput && updatesCompleted && !updatesOutput.includes('ERROR')) {
+          const cleanedOutput = updatesOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
+          const jsonMatch = cleanedOutput.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
+          if (jsonMatch && jsonMatch[0].length > 10) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0])
+              if (parsed && (Array.isArray(parsed) ? parsed.length > 0 : Object.keys(parsed).length > 0)) {
                 const updatesList = Array.isArray(parsed) ? parsed : [parsed]
                 const validUpdates = updatesList.filter(u => u && u.HotFixID).map(update => {
-                  let installedOnStr = null
-                  if (update.InstalledOn) {
-                    if (typeof update.InstalledOn === 'object') {
-                      if (update.InstalledOn.value) {
-                        const dateMatch = update.InstalledOn.value.match(/\/Date\((\d+)\)\//)
-                        if (dateMatch) {
-                          const timestamp = parseInt(dateMatch[1], 10)
-                          const date = new Date(timestamp)
-                          installedOnStr = date.toLocaleString('ko-KR', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                          })
-                        } else {
-                          installedOnStr = update.InstalledOn.value
-                        }
-                      } else if (update.InstalledOn.DateTime) {
-                        const dateTimeStr = update.InstalledOn.DateTime
-                        if (!dateTimeStr.includes('???')) {
-                          installedOnStr = dateTimeStr
-                        }
+                let installedOnStr = null
+                if (update.InstalledOn) {
+                  if (typeof update.InstalledOn === 'object') {
+                    if (update.InstalledOn.value) {
+                      const dateMatch = update.InstalledOn.value.match(/\/Date\((\d+)\)\//)
+                      if (dateMatch) {
+                        const timestamp = parseInt(dateMatch[1], 10)
+                        const date = new Date(timestamp)
+                        installedOnStr = date.toLocaleString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        })
+                      } else {
+                        installedOnStr = update.InstalledOn.value
                       }
-                    } else {
-                      installedOnStr = update.InstalledOn
+                    } else if (update.InstalledOn.DateTime) {
+                      const dateTimeStr = update.InstalledOn.DateTime
+                      if (!dateTimeStr.includes('???')) {
+                        installedOnStr = dateTimeStr
+                      }
                     }
+                  } else {
+                    installedOnStr = update.InstalledOn
                   }
-                  
-                  return {
-                    HotFixID: update.HotFixID,
-                    Description: update.Description,
-                    InstalledOn: installedOnStr,
-                    InstalledBy: update.InstalledBy
-                  }
-                })
+                }
                 
+                return {
+                  HotFixID: update.HotFixID,
+                  Description: update.Description,
+                  InstalledOn: installedOnStr,
+                  InstalledBy: update.InstalledBy
+                }
+              })
+              
                 const lastUpdate = validUpdates.length > 0 ? validUpdates[0].InstalledOn : null
                 
                 updatesData = {
@@ -335,64 +356,56 @@ const DeviceControl: React.FC = () => {
                   pendingCount: 0,
                   lastUpdateDate: lastUpdate
                 }
-              } catch (parseError) {
-                console.error('Windows Update JSON 파싱 실패:', parseError)
+              } else if (updatesCompleted) {
+                updatesData = {
+                  installed: [],
+                  pendingCount: 0,
+                  lastUpdateDate: null
+                }
+              }
+            } catch (parseError) {
+              console.error('Windows Update JSON 파싱 실패:', parseError)
+              if (updatesCompleted) {
+                updatesData = {
+                  installed: [],
+                  pendingCount: 0,
+                  lastUpdateDate: null
+                }
               }
             }
+          } else if (updatesCompleted) {
+            updatesData = {
+              installed: [],
+              pendingCount: 0,
+              lastUpdateDate: null
+            }
+          }
+        } else if (updatesCompleted) {
+          updatesData = {
+            installed: [],
+            pendingCount: 0,
+            lastUpdateDate: null
           }
         }
-      } catch (e) {
-        console.error('Windows Update 상태 조회 실패:', e)
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 2000))
       
       const connectionStatus = true
       
-      try {
-        setSecurityStatuses(prev => {
-          const prevStatus = prev[target] || {}
-          const updatedStatus: SecurityStatus = {
-            ...prevStatus,
+      setSecurityStatuses(prev => {
+        const prevStatus = prev[target] || {}
+        return {
+          ...prev,
+          [target]: {
             defender: defenderData || prevStatus.defender,
-            bitlocker: bitlockerData || prevStatus.bitlocker,
-            updates: updatesData || prevStatus.updates,
+            bitlocker: bitlockerCompleted ? (bitlockerData || prevStatus.bitlocker) : prevStatus.bitlocker,
+            updates: updatesCompleted ? (updatesData || prevStatus.updates) : prevStatus.updates,
             connection: connectionStatus,
             lastChecked: new Date().toLocaleString('ko-KR')
           }
-          
-          return {
-            ...prev,
-            [target]: updatedStatus
-          }
-        })
-      } catch (e) {
-        console.error('상태 업데이트 실패:', e)
-      }
-      
-      try {
-        addTerminalOutput(`PS C:\\> Get-MpComputerStatus`)
-        if (defenderResponse?.data?.stdout) {
-          addTerminalOutput(defenderResponse.data.stdout)
         }
-        addTerminalOutput(`PS C:\\> Get-BitLockerVolume`)
-        if (bitlockerResponse?.data?.stdout) {
-          addTerminalOutput(bitlockerResponse.data.stdout)
-        }
-        if (updatesResponse?.data?.stdout) {
-          addTerminalOutput(`PS C:\\> Get-HotFix`)
-          addTerminalOutput(updatesResponse.data.stdout)
-        }
-      } catch (e) {
-        console.error('터미널 출력 추가 실패:', e)
-      }
+      })
     } catch (error) {
       console.error('보안 상태 조회 실패:', error)
-      try {
-        addTerminalOutput(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`)
-      } catch (e) {
-        console.error('에러 메시지 출력 실패:', e)
-      }
     } finally {
       setLoadingSecurityStatus(prev => {
         const updated = { ...prev }
@@ -402,16 +415,13 @@ const DeviceControl: React.FC = () => {
     }
   }
 
-  const addTerminalOutput = (output: string) => {
-    setTerminalOutput(prev => [...prev, output])
-  }
-
   useEffect(() => {
     if (!selectedDevice) return
     
+    // 디바이스 선택 시 즉시 보안 상태 조회 (성능 개선: 3초 → 0.3초)
     const timeoutId = setTimeout(() => {
       loadDeviceSecurityStatus(selectedDevice)
-    }, 3000)
+    }, 300) // 3초 → 0.3초로 단축 (사용자 입력 안정화를 위한 최소 대기)
     
     return () => clearTimeout(timeoutId)
   }, [selectedDevice])
@@ -467,145 +477,203 @@ const DeviceControl: React.FC = () => {
     }
   }
 
-  const loadPolicyStatus = async (target: string) => {
+  const parsePolicyStatus = (stdout: string): string => {
+    if (!stdout) return 'Unknown'
+    
+    let cleanedOutput = stdout
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.match(/^[\d.]+:\s*$/))
+      .join(' ')
+      .trim()
+    
+    cleanedOutput = cleanedOutput.replace(/^[\d.]+:\s*/, '').trim()
+    
+    const lowerOutput = cleanedOutput.toLowerCase()
+    if (lowerOutput.includes('enabled')) return 'Enabled'
+    if (lowerOutput.includes('disabled')) return 'Disabled'
+    if (lowerOutput.includes('not configured')) return 'Not Configured'
+    if (lowerOutput.includes('none')) return 'Not Configured'
+    
+    return 'Unknown'
+  }
+
+  const loadGpoPolicyStatus = async (target: string) => {
     if (!target) return
     
-    setRefreshingPolicy(true)
+    setRefreshingGpoPolicy(true)
     
-    const parsePolicyStatus = (stdout: string): string => {
-      if (!stdout) return 'Unknown'
-      
-      // IP 주소와 콜론을 포함한 첫 줄 제거 (여러 줄에 걸친 경우 처리)
-      let cleanedOutput = stdout
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line && !line.match(/^[\d.]+:\s*$/)) // IP 주소만 있는 줄 제거
-        .join(' ')
-        .trim()
-      
-      // 여전히 IP 주소 형식이 남아있다면 제거
-      cleanedOutput = cleanedOutput.replace(/^[\d.]+:\s*/, '').trim()
-      
-      // 상태값 확인 (대소문자 구분 없이)
-      const lowerOutput = cleanedOutput.toLowerCase()
-      if (lowerOutput.includes('enabled')) return 'Enabled'
-      if (lowerOutput.includes('disabled')) return 'Disabled'
-      if (lowerOutput.includes('not configured')) return 'Not Configured'
-      if (lowerOutput.includes('none')) return 'Not Configured'
-      
-      return 'Unknown'
-    }
+    let usbStatus = 'Unknown'
+    let screensaverStatus = 'Unknown'
+    let firewallStatus = 'Unknown'
     
-    const currentStatus = policyStatuses[target] || {
-      usb: 'Unknown',
-      screensaver: 'Unknown',
-      firewall: 'Unknown',
-      firewallRules: {
-        http: 'Unknown',
-        https: 'Unknown',
-        dns: 'Unknown'
-      },
-      lastChecked: ''
-    }
-    
-    let usbStatus = currentStatus.usb
-    let screensaverStatus = currentStatus.screensaver
-    let firewallStatus = currentStatus.firewall
-    let firewallRules = { ...currentStatus.firewallRules }
+    const usbPolicyCommand = 'lgpo.get_policy "Removable Disks: Deny write access" machine'
+    const screensaverPolicyCommand = 'lgpo.get_policy "Enable screen saver" user'
+    const firewallPolicyCommand = 'lgpo.get_policy "Network\\Network Connections\\Windows Defender Firewall\\Domain Profile\\Windows Defender Firewall: Protect all network connections" machine'
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const usbPolicyCommand = 'lgpo.get_policy "Removable Disks: Deny write access" machine'
-      const usbResponse = await deviceApi.executeCommand(usbPolicyCommand, [target])
+      const [usbResponse, screensaverResponse, firewallResponse] = await Promise.all([
+        deviceApi.executeCommand(usbPolicyCommand, [target]).catch(e => {
+          console.error('USB 정책 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        }),
+        deviceApi.executeCommand(screensaverPolicyCommand, [target]).catch(e => {
+          console.error('화면보호기 정책 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        }),
+        deviceApi.executeCommand(firewallPolicyCommand, [target]).catch(e => {
+          console.error('방화벽 정책 상태 조회 실패:', e)
+          return { data: { stdout: '', stderr: '' } }
+        })
+      ])
+      
       const usbStdout = usbResponse.data?.stdout || ''
-      if (usbStdout.includes('Minion did not return') || usbStdout.includes('No response')) {
-        console.error('USB 정책 상태 조회: Minion 응답 없음')
-        usbStatus = 'Error'
+      if (!usbStdout || 
+          usbStdout.includes('Minion did not return') || 
+          usbStdout.includes('No response') ||
+          usbStdout.includes('ERROR')) {
+        if (usbStdout && !usbStdout.includes('ERROR')) {
+          console.error('USB 정책 상태 조회: Minion 응답 없음')
+        }
+        usbStatus = 'Unknown'
       } else {
-        usbStatus = parsePolicyStatus(usbStdout)
+        const parsed = parsePolicyStatus(usbStdout)
+        if (parsed !== 'Unknown') {
+          usbStatus = parsed
+        }
       }
-    } catch (error) {
-      console.error('USB 정책 상태 조회 실패:', error)
-      usbStatus = 'Error'
-    }
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const screensaverPolicyCommand = 'lgpo.get_policy "Enable screen saver" user'
-      const screensaverResponse = await deviceApi.executeCommand(screensaverPolicyCommand, [target])
+      
       const screensaverStdout = screensaverResponse.data?.stdout || ''
-      if (screensaverStdout.includes('Minion did not return') || screensaverStdout.includes('No response')) {
-        console.error('화면보호기 정책 상태 조회: Minion 응답 없음')
-        screensaverStatus = 'Error'
+      if (!screensaverStdout || 
+          screensaverStdout.includes('Minion did not return') || 
+          screensaverStdout.includes('No response') ||
+          screensaverStdout.includes('ERROR')) {
+        if (screensaverStdout && !screensaverStdout.includes('ERROR')) {
+          console.error('화면보호기 정책 상태 조회: Minion 응답 없음')
+        }
+        screensaverStatus = 'Unknown'
       } else {
-        screensaverStatus = parsePolicyStatus(screensaverStdout)
+        const parsed = parsePolicyStatus(screensaverStdout)
+        if (parsed !== 'Unknown') {
+          screensaverStatus = parsed
+        }
+      }
+      
+      const firewallStdout = firewallResponse.data?.stdout || ''
+      if (!firewallStdout || 
+          firewallStdout.includes('Minion did not return') || 
+          firewallStdout.includes('No response') ||
+          firewallStdout.includes('ERROR')) {
+        if (firewallStdout && !firewallStdout.includes('ERROR')) {
+          console.error('방화벽 정책 상태 조회: Minion 응답 없음')
+        }
+        firewallStatus = 'Unknown'
+      } else {
+        const parsed = parsePolicyStatus(firewallStdout)
+        if (parsed !== 'Unknown') {
+          firewallStatus = parsed
+        }
       }
     } catch (error) {
-      console.error('화면보호기 정책 상태 조회 실패:', error)
-      screensaverStatus = 'Error'
+      console.error('GPO 정책 상태 조회 실패:', error)
     }
     
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const firewallPolicyCommand = 'lgpo.get_policy "Network\\Network Connections\\Windows Defender Firewall\\Domain Profile\\Windows Defender Firewall: Protect all network connections" machine'
-      const firewallResponse = await deviceApi.executeCommand(firewallPolicyCommand, [target])
-      const firewallStdout = firewallResponse.data?.stdout || ''
-      if (firewallStdout.includes('Minion did not return') || firewallStdout.includes('No response')) {
-        console.error('방화벽 정책 상태 조회: Minion 응답 없음')
-        firewallStatus = 'Error'
-      } else {
-        firewallStatus = parsePolicyStatus(firewallStdout)
-      }
-    } catch (error) {
-      console.error('방화벽 정책 상태 조회 실패:', error)
-      firewallStatus = 'Error'
+    const hasValidData = usbStatus !== 'Unknown' || screensaverStatus !== 'Unknown' || firewallStatus !== 'Unknown'
+    
+    if (hasValidData) {
+      setPolicyStatuses(prev => ({
+        ...prev,
+        [target]: {
+          ...prev[target],
+          usb: usbStatus,
+          screensaver: screensaverStatus,
+          firewall: firewallStatus,
+          lastChecked: new Date().toLocaleString('ko-KR')
+        }
+      }))
     }
+    
+    setRefreshingGpoPolicy(false)
+  }
+
+  const loadFirewallRuleStatus = async (target: string) => {
+    if (!target) return
+    
+    setRefreshingFirewallRules(true)
     
     const checkFirewallRule = async (ruleName: string): Promise<string> => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 2000))
         const checkCommand = `cmd.run "netsh advfirewall firewall show rule name=\\"${ruleName}\\"" shell=cmd`
         const response = await deviceApi.executeCommand(checkCommand, [target])
         const rawOutput = response.data?.stdout || ''
         const stdout = rawOutput.replace(/^[\w.]+:\s*\n\s*/, '').trim()
         const stderr = response.data?.stderr || ''
+        const fullOutput = (stdout + ' ' + stderr).toLowerCase()
         
         if (stdout.includes('Minion did not return') || stdout.includes('No response')) {
           console.error(`방화벽 규칙 확인 실패 (${ruleName}): Minion 응답 없음`)
           return 'Error'
         }
         
-        if (stdout.includes('규칙 이름') || stdout.includes('Rule Name') || stdout.includes('Enabled') || stdout.includes('Disabled')) {
-          return 'Enabled'
-        } else if (stdout.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다') || 
-                   stdout.includes('No rules match') || 
-                   stdout.includes('cannot find') ||
-                   stderr.includes('cannot find')) {
+        if (stdout.includes('지정된 조건과 일치하는 규칙이 없습니다') || 
+            stdout.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다') || 
+            stdout.includes('No rules match') || 
+            stdout.includes('cannot find') ||
+            fullOutput.includes('지정된 조건과 일치하는 규칙이 없습니다') ||
+            fullOutput.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다')) {
           return 'Not Configured'
         }
+        
+        if (stdout.includes('규칙 이름') || stdout.includes('Rule Name') || stdout.includes('Enabled') || stdout.includes('Disabled')) {
+          return 'Enabled'
+        }
+        
         return 'Unknown'
-      } catch (error) {
+      } catch (error: any) {
+        const errorStdout = error?.response?.data?.stdout || error?.stdout || ''
+        const errorStderr = error?.response?.data?.stderr || error?.stderr || ''
+        const errorOutput = (errorStdout + ' ' + errorStderr).toLowerCase()
+        
+        if (errorStdout.includes('지정된 조건과 일치하는 규칙이 없습니다') || 
+            errorStdout.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다') ||
+            errorOutput.includes('지정된 조건과 일치하는 규칙이 없습니다') ||
+            errorOutput.includes('지정된 필터와 일치하는 규칙을 찾을 수 없습니다')) {
+          return 'Not Configured'
+        }
+        
         console.error(`방화벽 규칙 확인 실패 (${ruleName}):`, error)
         return 'Error'
       }
     }
     
-    firewallRules.http = await checkFirewallRule('Block HTTP Outbound')
-    firewallRules.https = await checkFirewallRule('Block HTTPS Outbound')
-    firewallRules.dns = await checkFirewallRule('Block Google DNS')
-    
-    setPolicyStatuses(prev => ({
-      ...prev,
-      [target]: {
-        usb: usbStatus,
-        screensaver: screensaverStatus,
-        firewall: firewallStatus,
-        firewallRules: firewallRules,
-        lastChecked: new Date().toLocaleString('ko-KR')
+    try {
+      const [httpRule, httpsRule, dnsRule] = await Promise.all([
+        checkFirewallRule('Block HTTP Outbound'),
+        checkFirewallRule('Block HTTPS Outbound'),
+        checkFirewallRule('Block Google DNS')
+      ])
+      
+      const hasValidData = httpRule !== 'Unknown' || httpsRule !== 'Unknown' || dnsRule !== 'Unknown'
+      
+      if (hasValidData) {
+        setPolicyStatuses(prev => ({
+          ...prev,
+          [target]: {
+            ...prev[target],
+            firewallRules: {
+              http: httpRule,
+              https: httpsRule,
+              dns: dnsRule
+            },
+            lastChecked: new Date().toLocaleString('ko-KR')
+          }
+        }))
       }
-    }))
+    } catch (error) {
+      console.error('방화벽 규칙 상태 조회 실패:', error)
+    }
     
-    setRefreshingPolicy(false)
+    setRefreshingFirewallRules(false)
   }
 
   const handleRunAllTests = async () => {
@@ -613,22 +681,25 @@ const DeviceControl: React.FC = () => {
     try {
       const devicesToCheck = filteredDevices.map(([target]) => target)
       
-      for (const target of devicesToCheck) {
-        if (loadingSecurityStatus[target]) {
-          console.log(`디바이스 ${target}는 이미 조회 중입니다. 스킵합니다.`)
-          continue
-        }
-        
+      const testPromises = devicesToCheck.map(async (target) => {
         try {
           await loadDeviceSecurityStatus(target)
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          return { target, success: true, skipped: false }
         } catch (error) {
           console.error(`디바이스 ${target} 보안 검사 실패:`, error)
-          continue
+          return { target, success: false, skipped: false, error }
         }
-      }
+      })
       
-      alert('모든 디바이스 보안 검사가 완료되었습니다.')
+      const results = await Promise.all(testPromises)
+      const successCount = results.filter(r => r.success).length
+      const failedCount = results.filter(r => !r.success && !r.skipped).length
+      
+      if (failedCount > 0) {
+        alert(`${successCount}개 디바이스 검사 완료, ${failedCount}개 실패. 콘솔을 확인해주세요.`)
+      } else {
+        alert(`모든 디바이스 보안 검사가 완료되었습니다. (${successCount}개)`)
+      }
     } catch (error) {
       console.error('전체 테스트 실패:', error)
       alert('일부 디바이스 검사 중 오류가 발생했습니다. 콘솔을 확인해주세요.')
@@ -690,9 +761,9 @@ const DeviceControl: React.FC = () => {
       category: 'usb'
     },
     {
-      name: '화면보호기 활성화 (1분)',
+      name: '화면보호기 활성화',
       command: 'lgpo.set user_policy="{\'Enable screen saver\': \'Enabled\', \'Screen saver timeout\': {\'ScreenSaverTimeOutFreqSpin\': \'60\'}, \'Password protect the screen saver\': \'Enabled\'}"',
-      description: '화면보호기 활성화 및 1분 타임아웃 설정 (암호보호 포함)',
+      description: '화면보호기 활성화 및 타임아웃 설정 (암호보호 포함)',
       target: 'individual',
       category: 'screensaver'
     },
@@ -803,6 +874,16 @@ const DeviceControl: React.FC = () => {
   }
 
   const handleCommandClick = async (command: any) => {
+    if (command.name.includes('화면보호기 활성화')) {
+      setPendingScreensaverCommand(command)
+      setShowScreensaverModal(true)
+      return
+    }
+
+    await executeCommand(command)
+  }
+
+  const executeCommand = async (command: any, customTimeoutSeconds?: number) => {
     const isGroupExecution = commandExecutionType === 'group'
     
     if (!isGroupExecution) {
@@ -841,24 +922,33 @@ const DeviceControl: React.FC = () => {
           }
         }
         
-        const isGpoSetCommand = command.command.startsWith('lgpo.set')
-        
-        if (command.command.startsWith('lgpo.')) {
-          saltCommand = command.command
-          displayCommand = command.command
-        } else if (command.command.startsWith('netsh ') || command.command.startsWith('gpupdate ')) {
-          saltCommand = `cmd.run "${command.command}" shell=cmd`
-          displayCommand = `CMD> ${command.command}`
+        if (customTimeoutSeconds !== undefined) {
+          const timeoutSeconds = customTimeoutSeconds * 60
+          saltCommand = `lgpo.set user_policy="{'Enable screen saver': 'Enabled', 'Screen saver timeout': {'ScreenSaverTimeOutFreqSpin': '${timeoutSeconds}'}, 'Password protect the screen saver': 'Enabled'}"`
+          displayCommand = saltCommand
         } else {
-          saltCommand = `cmd.run "${command.command}" shell=powershell`
-          displayCommand = `PS C:\\> ${command.command}`
+          const isGpoSetCommand = command.command.startsWith('lgpo.set')
+          
+          if (command.command.startsWith('lgpo.')) {
+            saltCommand = command.command
+            displayCommand = command.command
+          } else if (command.command.startsWith('netsh ') || command.command.startsWith('gpupdate ')) {
+            saltCommand = `cmd.run "${command.command}" shell=cmd`
+            displayCommand = `CMD> ${command.command}`
+          } else {
+            saltCommand = `cmd.run "${command.command}" shell=powershell`
+            displayCommand = `PS C:\\> ${command.command}`
+          }
         }
         
         const response = await deviceApi.executeCommand(saltCommand, [target])
         
         const commandKey = `${command.name}_${target}_${Date.now()}`
+        const commandDisplayName = customTimeoutSeconds !== undefined 
+          ? `화면보호기 활성화 (${customTimeoutSeconds}분)`
+          : command.name
         const resultData = {
-          command: command.name,
+          command: commandDisplayName,
           displayCommand,
           target: isGroupExecution ? `${selectedGroupDepartment} 부서 전체` : target,
           stdout: response.data?.stdout || '',
@@ -867,25 +957,12 @@ const DeviceControl: React.FC = () => {
         }
         setCommandResults(prev => ({ ...prev, [commandKey]: resultData }))
         
-        const targetDisplay = isGroupExecution ? `${selectedGroupDepartment} 부서 전체` : target
-        addTerminalOutput(`[타겟: ${targetDisplay}]`)
-        addTerminalOutput(displayCommand)
-        if (response.data?.stdout) {
-          addTerminalOutput(response.data.stdout)
-        } else if (response.data?.stderr) {
-          addTerminalOutput(`오류: ${response.data.stderr}`)
-        }
-        
+        const isGpoSetCommand = saltCommand.startsWith('lgpo.set')
         if (isGpoSetCommand) {
-          addTerminalOutput('\nGPO 정책 적용 중...')
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
           const gpupdateCommand = `cmd.run "gpupdate /force" shell=cmd`
           const gpupdateResponse = await deviceApi.executeCommand(gpupdateCommand, [target])
           
-          addTerminalOutput('CMD> gpupdate /force')
           if (gpupdateResponse.data?.stdout) {
-            addTerminalOutput(gpupdateResponse.data.stdout)
             setCommandResults(prev => ({
               ...prev,
               [commandKey]: {
@@ -895,7 +972,6 @@ const DeviceControl: React.FC = () => {
               }
             }))
           } else if (gpupdateResponse.data?.stderr) {
-            addTerminalOutput(`오류: ${gpupdateResponse.data.stderr}`)
             setCommandResults(prev => ({
               ...prev,
               [commandKey]: {
@@ -904,7 +980,6 @@ const DeviceControl: React.FC = () => {
               }
             }))
           }
-          addTerminalOutput('GPO 정책 적용 완료')
         }
         
         // 결과 모달 자동 열기
@@ -1349,6 +1424,7 @@ const DeviceControl: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {paginatedDevices.map(([target, info]) => {
                 const security = securityStatuses[target]
+                const isLoading = loadingSecurityStatus[target]
                 return (
                   <tr 
                     key={target}
@@ -1358,25 +1434,37 @@ const DeviceControl: React.FC = () => {
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{info.host || target}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{info.department || '미설정'}</td>
                     <td className="px-4 py-3 text-sm">
-                      {security?.defender?.AntivirusEnabled ? (
+                      {isLoading ? (
+                        <span className="text-gray-400">로딩 중...</span>
+                      ) : security?.defender?.AntivirusEnabled ? (
                         <span className="text-green-600">OK</span>
-                      ) : (
+                      ) : security?.defender !== undefined ? (
                         <span className="text-red-600">OFF</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {security?.bitlocker?.ProtectionStatus === 'On' ? (
+                      {isLoading ? (
+                        <span className="text-gray-400">로딩 중...</span>
+                      ) : security?.bitlocker?.ProtectionStatus === 'On' ? (
                         <span className="text-green-600">ON</span>
-                      ) : (
+                      ) : security?.bitlocker !== undefined ? (
                         <span className="text-gray-400">OFF</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">최신</td>
                     <td className="px-4 py-3 text-sm">
-                      {security?.connection ? (
+                      {isLoading ? (
+                        <span className="text-gray-400">로딩 중...</span>
+                      ) : security?.connection ? (
                         <span className="text-green-600">Online</span>
-                      ) : (
+                      ) : security?.connection !== undefined ? (
                         <span className="text-red-600">Offline</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                   </tr>
@@ -1440,7 +1528,9 @@ const DeviceControl: React.FC = () => {
                   <HardDrive className="w-5 h-5 text-purple-600" />
                   <h4 className="font-semibold text-gray-800">BitLocker</h4>
                 </div>
-                {securityStatuses[selectedDevice]?.bitlocker ? (
+                {loadingSecurityStatus[selectedDevice] ? (
+                  <p className="text-sm text-gray-500">로딩 중...</p>
+                ) : securityStatuses[selectedDevice]?.bitlocker ? (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">보호 상태:</span>
@@ -1448,7 +1538,7 @@ const DeviceControl: React.FC = () => {
                         {securityStatuses[selectedDevice].bitlocker?.ProtectionStatus === 'On' ? '활성화' : '비활성화'}
                       </span>
                     </div>
-                    {securityStatuses[selectedDevice].bitlocker?.MountPoint && (
+                    {securityStatuses[selectedDevice].bitlocker?.MountPoint && securityStatuses[selectedDevice].bitlocker.MountPoint !== 'N/A' && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">마운트 포인트:</span>
                         <span className="text-gray-700 font-medium">
@@ -1456,7 +1546,7 @@ const DeviceControl: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {securityStatuses[selectedDevice].bitlocker?.VolumeStatus && (
+                    {securityStatuses[selectedDevice].bitlocker?.VolumeStatus && securityStatuses[selectedDevice].bitlocker.VolumeStatus !== 'N/A' && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">볼륨 상태:</span>
                         <span className="text-gray-700 font-medium">
@@ -1476,7 +1566,9 @@ const DeviceControl: React.FC = () => {
                   <Download className="w-5 h-5 text-green-600" />
                   <h4 className="font-semibold text-gray-800">Windows Update</h4>
                 </div>
-                {securityStatuses[selectedDevice]?.updates ? (
+                {loadingSecurityStatus[selectedDevice] ? (
+                  <p className="text-sm text-gray-500">로딩 중...</p>
+                ) : securityStatuses[selectedDevice]?.updates ? (
                   <div className="space-y-2 text-sm">
                     {securityStatuses[selectedDevice].updates?.lastUpdateDate && (
                       <div className="flex justify-between">
@@ -1782,15 +1874,26 @@ const DeviceControl: React.FC = () => {
             {showPolicyStatus ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
           {showPolicyStatus && selectedDevice && (
-            <button
-              onClick={() => loadPolicyStatus(selectedDevice)}
-              disabled={refreshingPolicy}
-              style={{ backgroundColor: '#10113C' }}
-              className="flex items-center space-x-2 text-white px-3 py-1.5 rounded-lg hover:opacity-90 disabled:bg-gray-300 transition-opacity text-sm ml-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshingPolicy ? 'animate-spin' : ''}`} />
-              <span>{refreshingPolicy ? '새로고침 중...' : '새로고침'}</span>
-            </button>
+            <div className="flex items-center space-x-2 ml-2">
+              <button
+                onClick={() => loadGpoPolicyStatus(selectedDevice)}
+                disabled={refreshingGpoPolicy}
+                style={{ backgroundColor: '#10113C' }}
+                className="flex items-center space-x-2 text-white px-3 py-1.5 rounded-lg hover:opacity-90 disabled:bg-gray-300 transition-opacity text-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshingGpoPolicy ? 'animate-spin' : ''}`} />
+                <span>{refreshingGpoPolicy ? '확인 중...' : 'GPO 현황 확인'}</span>
+              </button>
+              <button
+                onClick={() => loadFirewallRuleStatus(selectedDevice)}
+                disabled={refreshingFirewallRules}
+                style={{ backgroundColor: '#10113C' }}
+                className="flex items-center space-x-2 text-white px-3 py-1.5 rounded-lg hover:opacity-90 disabled:bg-gray-300 transition-opacity text-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshingFirewallRules ? 'animate-spin' : ''}`} />
+                <span>{refreshingFirewallRules ? '확인 중...' : '방화벽 규칙 확인'}</span>
+              </button>
+            </div>
           )}
         </div>
         
@@ -1802,7 +1905,6 @@ const DeviceControl: React.FC = () => {
                 value={selectedDevice}
                 onChange={(e) => {
                   setSelectedDevice(e.target.value)
-                  loadPolicyStatus(e.target.value)
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
@@ -1818,67 +1920,72 @@ const DeviceControl: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-700">USB 통제</span>
                 <span className={`text-sm ${
+                  refreshingGpoPolicy ? 'text-gray-400' :
                   policyStatuses[selectedDevice]?.usb === 'Enabled' ? 'text-green-600' :
                   policyStatuses[selectedDevice]?.usb === 'Disabled' ? 'text-yellow-600' :
                   policyStatuses[selectedDevice]?.usb === 'Not Configured' ? 'text-gray-500' :
                   policyStatuses[selectedDevice]?.usb === 'Error' ? 'text-red-600' : 'text-gray-400'
                 }`}>
-                  {policyStatuses[selectedDevice]?.usb || '미확인'}
+                  {refreshingGpoPolicy ? '로딩 중...' : (policyStatuses[selectedDevice]?.usb || '미확인')}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-700">화면보호기</span>
                 <span className={`text-sm ${
+                  refreshingGpoPolicy ? 'text-gray-400' :
                   policyStatuses[selectedDevice]?.screensaver === 'Enabled' ? 'text-green-600' :
                   policyStatuses[selectedDevice]?.screensaver === 'Disabled' ? 'text-yellow-600' :
                   policyStatuses[selectedDevice]?.screensaver === 'Not Configured' ? 'text-gray-500' :
                   policyStatuses[selectedDevice]?.screensaver === 'Error' ? 'text-red-600' : 'text-gray-400'
                 }`}>
-                  {policyStatuses[selectedDevice]?.screensaver || '미확인'}
+                  {refreshingGpoPolicy ? '로딩 중...' : (policyStatuses[selectedDevice]?.screensaver || '미확인')}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-700">방화벽</span>
                 <span className={`text-sm ${
+                  refreshingGpoPolicy ? 'text-gray-400' :
                   policyStatuses[selectedDevice]?.firewall === 'Enabled' ? 'text-green-600' :
                   policyStatuses[selectedDevice]?.firewall === 'Disabled' ? 'text-yellow-600' :
                   policyStatuses[selectedDevice]?.firewall === 'Not Configured' ? 'text-gray-500' :
                   policyStatuses[selectedDevice]?.firewall === 'Error' ? 'text-red-600' : 'text-gray-400'
                 }`}>
-                  {policyStatuses[selectedDevice]?.firewall || '미확인'}
+                  {refreshingGpoPolicy ? '로딩 중...' : (policyStatuses[selectedDevice]?.firewall || '미확인')}
                 </span>
               </div>
-              {/* 방화벽 규칙 상태 */}
               <div className="border-t pt-3 mt-3 space-y-2">
                 <p className="text-sm font-medium text-gray-700 mb-2">방화벽 규칙</p>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">HTTP 차단</span>
                   <span className={`text-xs ${
+                    refreshingFirewallRules ? 'text-gray-400' :
                     policyStatuses[selectedDevice]?.firewallRules?.http === 'Enabled' ? 'text-green-600' :
                     policyStatuses[selectedDevice]?.firewallRules?.http === 'Not Configured' ? 'text-gray-500' :
                     policyStatuses[selectedDevice]?.firewallRules?.http === 'Error' ? 'text-red-600' : 'text-gray-400'
                   }`}>
-                    {policyStatuses[selectedDevice]?.firewallRules?.http || '미확인'}
+                    {refreshingFirewallRules ? '로딩 중...' : (policyStatuses[selectedDevice]?.firewallRules?.http || '미확인')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">HTTPS 차단</span>
                   <span className={`text-xs ${
+                    refreshingFirewallRules ? 'text-gray-400' :
                     policyStatuses[selectedDevice]?.firewallRules?.https === 'Enabled' ? 'text-green-600' :
                     policyStatuses[selectedDevice]?.firewallRules?.https === 'Not Configured' ? 'text-gray-500' :
                     policyStatuses[selectedDevice]?.firewallRules?.https === 'Error' ? 'text-red-600' : 'text-gray-400'
                   }`}>
-                    {policyStatuses[selectedDevice]?.firewallRules?.https || '미확인'}
+                    {refreshingFirewallRules ? '로딩 중...' : (policyStatuses[selectedDevice]?.firewallRules?.https || '미확인')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">Google DNS 차단</span>
                   <span className={`text-xs ${
+                    refreshingFirewallRules ? 'text-gray-400' :
                     policyStatuses[selectedDevice]?.firewallRules?.dns === 'Enabled' ? 'text-green-600' :
                     policyStatuses[selectedDevice]?.firewallRules?.dns === 'Not Configured' ? 'text-gray-500' :
                     policyStatuses[selectedDevice]?.firewallRules?.dns === 'Error' ? 'text-red-600' : 'text-gray-400'
                   }`}>
-                    {policyStatuses[selectedDevice]?.firewallRules?.dns || '미확인'}
+                    {refreshingFirewallRules ? '로딩 중...' : (policyStatuses[selectedDevice]?.firewallRules?.dns || '미확인')}
                   </span>
                 </div>
               </div>
@@ -2169,6 +2276,78 @@ const DeviceControl: React.FC = () => {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 화면보호기 시간 선택 모달 */}
+      {showScreensaverModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">화면보호기 활성화 시간 설정</h3>
+                <button
+                  onClick={() => {
+                    setShowScreensaverModal(false)
+                    setPendingScreensaverCommand(null)
+                    setScreensaverMinutes(1)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  화면보호기 활성화 시간 (분)
+                </label>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={screensaverMinutes}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 1
+                      setScreensaverMinutes(Math.max(1, Math.min(60, value)))
+                    }}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  />
+                  <span className="text-sm text-gray-600">분</span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  선택 가능 범위: 1분 ~ 60분
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={async () => {
+                    if (pendingScreensaverCommand) {
+                      setShowScreensaverModal(false)
+                      await executeCommand(pendingScreensaverCommand, screensaverMinutes)
+                      setPendingScreensaverCommand(null)
+                      setScreensaverMinutes(1)
+                    }
+                  }}
+                  className="flex-1 bg-[#10113C] text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  적용 ({screensaverMinutes}분)
+                </button>
+                <button
+                  onClick={() => {
+                    setShowScreensaverModal(false)
+                    setPendingScreensaverCommand(null)
+                    setScreensaverMinutes(1)
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  취소
+                </button>
+              </div>
             </div>
           </div>
         </div>
