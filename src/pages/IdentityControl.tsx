@@ -1,5 +1,3 @@
-import { API_BASE_URL } from '../utils/api';
-
 import React, { useState, useEffect, useRef } from 'react';
 import {Users, Server, Play, CheckCircle, XCircle, Clock, ExternalLink, Settings, RefreshCw, AlertTriangle, Activity, Key, LogIn, Cpu, HardDrive, Lock, Unlock, Terminal, Copy, Eye, X, ChevronDown, ChevronUp, Ban, Shield} from 'lucide-react';
 
@@ -58,6 +56,9 @@ const IdentityControl: React.FC = () => {
   const [resultType, setResultType] = useState<'text' | 'json' | 'array' | 'object'>('text');
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   
+  // 각 기능별 마지막 실행한 명령어 추적
+  const [lastExecutedCommands, setLastExecutedCommands] = useState<Record<string, string>>({});
+  
   // 실시간 로그 관련 상태
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<AccessLog | null>(null);
@@ -67,6 +68,24 @@ const IdentityControl: React.FC = () => {
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
   const [selectedBlockTypes, setSelectedBlockTypes] = useState<Set<'user' | 'ip' | 'resource' | 'action'>>(new Set());
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
+  
+  // 사용자 생성/수정 모달 상태
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ username: '', password: '', enabled: true });
+  
+  // 비밀번호 설정 모달 상태
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [setPasswordForm, setSetPasswordForm] = useState({ username: '', password: '' });
+  
+  // 역할 생성 모달 상태
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [createRoleForm, setCreateRoleForm] = useState({ name: '', description: '' });
+  
+  // 역할 할당 모달 상태
+  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
+  const [assignRoleForm, setAssignRoleForm] = useState({ username: '', roleName: '' });
+  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   
   const terminalRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -87,7 +106,7 @@ const IdentityControl: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(API_BASE_URL + '/health', {
+      const response = await fetch('http://localhost:3001/api/health', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -127,7 +146,7 @@ const IdentityControl: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(API_BASE_URL + '/docker/status', {
+      const response = await fetch('http://localhost:3001/api/docker/status', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -180,7 +199,7 @@ const IdentityControl: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(API_BASE_URL + '/logs/system', {
+      const response = await fetch('http://localhost:3001/api/logs/system', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -216,7 +235,7 @@ const IdentityControl: React.FC = () => {
       console.log('API 호출: http://localhost:3001/api/keycloak/execute');
       
       // 기존 백엔드 API를 사용하여 Keycloak 이벤트 조회
-      const response = await fetch(API_BASE_URL + '/keycloak/execute', {
+      const response = await fetch('http://localhost:3001/api/keycloak/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -452,7 +471,7 @@ const IdentityControl: React.FC = () => {
           const logsWithBlockStatus = await Promise.all(newLogs.map(async (log) => {
             try {
               // 백엔드에서 차단 규칙 확인
-              const checkResponse = await fetch(API_BASE_URL + '/block-rules/check', {
+              const checkResponse = await fetch('http://localhost:3001/api/block-rules/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -545,7 +564,7 @@ const IdentityControl: React.FC = () => {
     try {
       console.log('사용자 목록 기반 로그 생성 시작...');
       
-      const response = await fetch(API_BASE_URL + '/keycloak/users', {
+      const response = await fetch('http://localhost:3001/api/keycloak/users', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -677,7 +696,7 @@ const IdentityControl: React.FC = () => {
   // 차단 규칙 로드 (백엔드 API에서)
   const loadBlockRules = async () => {
     try {
-      const response = await fetch(API_BASE_URL + '/block-rules');
+      const response = await fetch('http://localhost:3001/api/block-rules');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.rules) {
@@ -759,7 +778,7 @@ const IdentityControl: React.FC = () => {
     
     // 백엔드에 차단 규칙 저장
     try {
-      const saveResponse = await fetch(API_BASE_URL + '/block-rules', {
+      const saveResponse = await fetch('http://localhost:3001/api/block-rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -786,7 +805,7 @@ const IdentityControl: React.FC = () => {
       // 사용자 차단
       if (conditions.user) {
         // 사용자 비활성화 - 실제로 차단됨
-        const response = await fetch(API_BASE_URL + '/keycloak/execute', {
+        const response = await fetch('http://localhost:3001/api/keycloak/execute', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -798,7 +817,7 @@ const IdentityControl: React.FC = () => {
           
           // 활성 세션 종료
           try {
-            const userResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const userResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -812,7 +831,7 @@ const IdentityControl: React.FC = () => {
               if (users.length > 0) {
                 const userId = users[0].id;
                 // 사용자의 모든 세션 종료
-                const logoutResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const logoutResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -823,7 +842,7 @@ const IdentityControl: React.FC = () => {
                   console.log('사용자 세션 종료 완료:', log.user);
                 } else {
                   // logout-user 명령어가 없을 수 있으므로 sessions API 사용
-                  const sessionsResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const sessionsResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -835,7 +854,7 @@ const IdentityControl: React.FC = () => {
                     const sessions = JSON.parse(sessionsResult.stdout || '[]');
                     // 각 세션 종료
                     for (const session of sessions) {
-                      await fetch(API_BASE_URL + '/keycloak/execute', {
+                      await fetch('http://localhost:3001/api/keycloak/execute', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -862,7 +881,7 @@ const IdentityControl: React.FC = () => {
         if (conditions.user && conditions.user !== 'unknown') {
           try {
             // 사용자 조회
-            const userResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const userResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -876,7 +895,7 @@ const IdentityControl: React.FC = () => {
               if (users.length > 0) {
                 const userId = users[0].id;
                 // 사용자 속성에 차단된 IP 추가
-                const blockResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const blockResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -906,7 +925,7 @@ const IdentityControl: React.FC = () => {
           const clientId = clientIdMatch[1];
           try {
             // 클라이언트 조회 및 권한 제거
-            const clientResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const clientResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -920,7 +939,7 @@ const IdentityControl: React.FC = () => {
               if (clients.length > 0) {
                 const client = clients[0];
                 // 클라이언트 비활성화 또는 권한 제거
-                const disableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const disableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -947,7 +966,7 @@ const IdentityControl: React.FC = () => {
         // LOGIN 액션 차단: 모든 활성 세션 종료
         try {
           // 모든 사용자의 세션 조회 및 종료
-          const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+          const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -963,7 +982,7 @@ const IdentityControl: React.FC = () => {
             for (const user of users) {
               try {
                 // 각 사용자의 세션 조회
-                const sessionsResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const sessionsResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -978,7 +997,7 @@ const IdentityControl: React.FC = () => {
                   // 각 세션 종료
                   for (const session of sessions) {
                     try {
-                      await fetch(API_BASE_URL + '/keycloak/execute', {
+                      await fetch('http://localhost:3001/api/keycloak/execute', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -1007,7 +1026,7 @@ const IdentityControl: React.FC = () => {
         // 사용자 속성에 차단된 액션 추가
         if (conditions.user && conditions.user !== 'unknown') {
           try {
-            const userResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const userResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1021,7 +1040,7 @@ const IdentityControl: React.FC = () => {
               if (users.length > 0) {
                 const userId = users[0].id;
                 // 사용자 속성에 차단된 액션 추가
-                const blockResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const blockResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1143,7 +1162,7 @@ const IdentityControl: React.FC = () => {
     // 백엔드에 업데이트 저장
     if (toggledRule) {
       try {
-        const response = await fetch(`/block-rules/${ruleId}`, {
+        const response = await fetch(`http://localhost:3001/api/block-rules/${ruleId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1170,7 +1189,7 @@ const IdentityControl: React.FC = () => {
       try {
         // 먼저 Keycloak 인증 확인 및 재인증
         try {
-          const loginResponse = await fetch(API_BASE_URL + '/keycloak/login', {
+          const loginResponse = await fetch('http://localhost:3001/api/keycloak/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
@@ -1188,7 +1207,7 @@ const IdentityControl: React.FC = () => {
           if (conditions.user) {
             // 먼저 username으로 조회 시도
             let userId: string | null = null;
-            const response = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const response = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1206,7 +1225,7 @@ const IdentityControl: React.FC = () => {
             
             // username으로 찾지 못했으면 모든 사용자 조회해서 찾기
             if (!userId) {
-              const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+              const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -1232,7 +1251,7 @@ const IdentityControl: React.FC = () => {
               // 사용자 활성화 (최대 3번 재시도)
               let activated = false;
               for (let attempt = 0; attempt < 3; attempt++) {
-                const enableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const enableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1243,7 +1262,7 @@ const IdentityControl: React.FC = () => {
                 if (enableResponse.ok) {
                   // 활성화 확인
                   await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 대기
-                  const verifyResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const verifyResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1272,7 +1291,7 @@ const IdentityControl: React.FC = () => {
                 console.error('사용자 활성화 최종 실패:', conditions.user);
                 // 마지막 시도: 모든 사용자 조회해서 해당 사용자 찾아서 활성화
                 try {
-                  const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1288,7 +1307,7 @@ const IdentityControl: React.FC = () => {
                     );
                     
                     if (foundUser) {
-                      await fetch(API_BASE_URL + '/keycloak/execute', {
+                      await fetch('http://localhost:3001/api/keycloak/execute', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -1306,7 +1325,7 @@ const IdentityControl: React.FC = () => {
               console.error('사용자를 찾을 수 없습니다:', conditions.user);
               // 사용자를 찾지 못했어도 모든 비활성화된 사용자 중에서 찾아서 활성화 시도
               try {
-                const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1322,7 +1341,7 @@ const IdentityControl: React.FC = () => {
                   );
                   
                   if (foundUser) {
-                    await fetch(API_BASE_URL + '/keycloak/execute', {
+                    await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1340,7 +1359,7 @@ const IdentityControl: React.FC = () => {
             // IP 차단 해제 (사용자가 있는 경우)
             if (conditions.ip && userId) {
                   try {
-                    const userDetailResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const userDetailResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1362,7 +1381,7 @@ const IdentityControl: React.FC = () => {
                       }
                       
                       // IP 속성 업데이트 (비어있으면 제거)
-                      const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                      const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -1383,7 +1402,7 @@ const IdentityControl: React.FC = () => {
             // 액션 차단 해제 (사용자가 있는 경우)
             if (conditions.action && userId) {
               try {
-                const userDetailResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const userDetailResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1405,7 +1424,7 @@ const IdentityControl: React.FC = () => {
                   }
                   
                   // 액션 속성 업데이트 (비어있으면 제거)
-                  const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1426,7 +1445,7 @@ const IdentityControl: React.FC = () => {
           
           // IP만 차단된 경우 (사용자가 없는 경우)
           if (conditions.ip && !conditions.user) {
-            const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1441,7 +1460,7 @@ const IdentityControl: React.FC = () => {
               for (const user of users) {
                 try {
                   // 사용자 상세 정보 가져오기
-                  const userDetailResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const userDetailResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1462,7 +1481,7 @@ const IdentityControl: React.FC = () => {
                     }
                     
                     // IP 속성 업데이트 (비어있으면 제거)
-                    const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1484,7 +1503,7 @@ const IdentityControl: React.FC = () => {
           
           // 액션만 차단된 경우 (사용자가 없는 경우)
           if (conditions.action && !conditions.user) {
-            const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1499,7 +1518,7 @@ const IdentityControl: React.FC = () => {
               for (const user of users) {
                 try {
                   // 사용자 상세 정보 가져오기
-                  const userDetailResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const userDetailResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1520,7 +1539,7 @@ const IdentityControl: React.FC = () => {
                     }
                     
                     // 액션 속성 업데이트 (비어있으면 제거)
-                    const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1546,7 +1565,7 @@ const IdentityControl: React.FC = () => {
             if (clientIdMatch) {
               const clientId = clientIdMatch[1];
               try {
-                const clientResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const clientResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1560,7 +1579,7 @@ const IdentityControl: React.FC = () => {
                   if (clients.length > 0) {
                     const client = clients[0];
                     // 클라이언트 활성화
-                    const enableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const enableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1581,7 +1600,7 @@ const IdentityControl: React.FC = () => {
           // 기존 단일 조건 방식 (호환성)
           // 사용자 차단 해제: 사용자 다시 활성화
           let userId: string | null = null;
-          const response = await fetch(API_BASE_URL + '/keycloak/execute', {
+          const response = await fetch('http://localhost:3001/api/keycloak/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1599,7 +1618,7 @@ const IdentityControl: React.FC = () => {
           
           // username으로 찾지 못했으면 모든 사용자 조회해서 찾기
           if (!userId) {
-            const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1625,7 +1644,7 @@ const IdentityControl: React.FC = () => {
             // 사용자 활성화 (최대 3번 재시도)
             let activated = false;
             for (let attempt = 0; attempt < 3; attempt++) {
-              const enableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+              const enableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -1636,7 +1655,7 @@ const IdentityControl: React.FC = () => {
               if (enableResponse.ok) {
                 // 활성화 확인
                 await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 대기
-                const verifyResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const verifyResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1665,7 +1684,7 @@ const IdentityControl: React.FC = () => {
               console.error('사용자 활성화 최종 실패:', ruleToDelete.value);
               // 마지막 시도: 모든 사용자 조회해서 해당 사용자 찾아서 활성화
               try {
-                const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ 
@@ -1681,7 +1700,7 @@ const IdentityControl: React.FC = () => {
                   );
                   
                   if (foundUser) {
-                    await fetch(API_BASE_URL + '/keycloak/execute', {
+                    await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1699,7 +1718,7 @@ const IdentityControl: React.FC = () => {
             console.error('사용자를 찾을 수 없습니다:', ruleToDelete.value);
             // 사용자를 찾지 못했어도 모든 비활성화된 사용자 중에서 찾아서 활성화 시도
             try {
-              const allUsersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+              const allUsersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -1715,7 +1734,7 @@ const IdentityControl: React.FC = () => {
                 );
                 
                 if (foundUser) {
-                  await fetch(API_BASE_URL + '/keycloak/execute', {
+                  await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1732,7 +1751,7 @@ const IdentityControl: React.FC = () => {
         } else if (ruleToDelete.type === 'ip') {
           // IP 차단 해제: 사용자 속성에서 차단된 IP 제거
           // 해당 IP가 차단된 모든 사용자 찾기
-          const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+          const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1755,7 +1774,7 @@ const IdentityControl: React.FC = () => {
                   if (blockedIps.includes(ruleToDelete.value)) {
                     // 차단된 IP 제거
                     const updatedIps = blockedIps.filter((ip: string) => ip !== ruleToDelete.value);
-                    const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1778,7 +1797,7 @@ const IdentityControl: React.FC = () => {
           if (clientIdMatch) {
             const clientId = clientIdMatch[1];
             try {
-              const clientResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+              const clientResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -1792,7 +1811,7 @@ const IdentityControl: React.FC = () => {
                 if (clients.length > 0) {
                   const client = clients[0];
                   // 클라이언트 활성화
-                  const enableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const enableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1810,7 +1829,7 @@ const IdentityControl: React.FC = () => {
           }
         } else if (ruleToDelete.type === 'action') {
           // 액션 차단 해제: 사용자 속성에서 차단된 액션 제거
-          const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+          const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1833,7 +1852,7 @@ const IdentityControl: React.FC = () => {
                   if (blockedActions.includes(ruleToDelete.value)) {
                     // 차단된 액션 제거
                     const updatedActions = blockedActions.filter((action: string) => action !== ruleToDelete.value);
-                    const updateResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const updateResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -1864,7 +1883,7 @@ const IdentityControl: React.FC = () => {
       console.log('모든 비활성화된 사용자 활성화 시도...');
       // Keycloak 인증 재확인 (admin 계정이 비활성화되어 있으면 실패할 수 있음)
       try {
-        const loginResponse = await fetch(API_BASE_URL + '/keycloak/login', {
+        const loginResponse = await fetch('http://localhost:3001/api/keycloak/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1877,7 +1896,7 @@ const IdentityControl: React.FC = () => {
         console.warn('Keycloak 인증 실패:', error);
       }
       
-      const usersResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+      const usersResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -1893,7 +1912,7 @@ const IdentityControl: React.FC = () => {
         for (const user of users) {
           try {
             // 사용자 상세 정보 확인
-            const userDetailResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            const userDetailResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -1909,7 +1928,7 @@ const IdentityControl: React.FC = () => {
                 // 사용자 활성화 (최대 2번 재시도)
                 let activated = false;
                 for (let attempt = 0; attempt < 2; attempt++) {
-                  const enableResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                  const enableResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -1920,7 +1939,7 @@ const IdentityControl: React.FC = () => {
                   if (enableResponse.ok) {
                     await new Promise(resolve => setTimeout(resolve, 300));
                     // 확인
-                    const verifyResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+                    const verifyResponse = await fetch('http://localhost:3001/api/keycloak/execute', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -2044,7 +2063,7 @@ const IdentityControl: React.FC = () => {
     
     // 백엔드에서 삭제
     try {
-      const response = await fetch(`/block-rules/${ruleId}`, {
+      const response = await fetch(`http://localhost:3001/api/block-rules/${ruleId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -2173,7 +2192,9 @@ const IdentityControl: React.FC = () => {
 
   // Keycloak 자동 로그인
   const executeKeycloakLogin = async () => {
-    const loginCommand = '/opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin';
+    // Windows Docker에서는 host.docker.internal을 사용하여 호스트 머신에 접근
+    const keycloakServer = 'http://host.docker.internal:8080';
+    const loginCommand = `/opt/keycloak/bin/kcadm.sh config credentials --server ${keycloakServer} --realm master --user admin --password admin`;
     
     addTerminalMessage('command', loginCommand);
     
@@ -2181,7 +2202,7 @@ const IdentityControl: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(API_BASE_URL + '/system/execute', {
+      const response = await fetch('http://localhost:3001/api/system/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: `docker exec -i keycloak ${loginCommand}` }),
@@ -2214,9 +2235,14 @@ const IdentityControl: React.FC = () => {
       return;
     }
 
-    const fullCommand = commandInput.startsWith('/opt/keycloak/bin/kcadm.sh') 
+    let fullCommand = commandInput.startsWith('/opt/keycloak/bin/kcadm.sh') 
       ? commandInput 
       : `/opt/keycloak/bin/kcadm.sh ${commandInput}`;
+    
+    // --server 옵션이 없으면 추가
+    if (!fullCommand.includes('--server')) {
+      fullCommand = `${fullCommand} --server ${KEYCLOAK_SERVER}`;
+    }
 
     addTerminalMessage('command', fullCommand);
     setLoading(true);
@@ -2225,7 +2251,7 @@ const IdentityControl: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(API_BASE_URL + '/system/execute', {
+      const response = await fetch('http://localhost:3001/api/system/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: `docker exec -i keycloak ${fullCommand}` }),
@@ -2364,9 +2390,9 @@ const IdentityControl: React.FC = () => {
       description: '새 사용자를 생성합니다'
     },
     {
-      name: '사용자 비밀번호 설정',
+      name: '비밀번호 변경',
       command: 'set-password --username newuser --new-password password123',
-      description: '사용자 비밀번호를 설정합니다'
+      description: '사용자 비밀번호를 변경합니다'
     },
     {
       name: '역할 생성',
@@ -2384,31 +2410,25 @@ const IdentityControl: React.FC = () => {
     setCommandInput(command);
   };
 
-  // 명령어 직접 실행 (토스트 포함)
-  const handleExecuteCommandDirect = async (command: string) => {
+  // Keycloak 서버 URL (Windows Docker에서는 host.docker.internal 사용)
+  const KEYCLOAK_SERVER = 'http://host.docker.internal:8080';
+
+  // 역할 목록 가져오기
+  const fetchRoles = async () => {
     if (!isTerminalConnected) {
       addTerminalMessage('error', '먼저 Keycloak 쉘에 연결하세요.');
       return;
     }
 
-    // 토스트 메시지 표시
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-
-    const fullCommand = command.startsWith('/opt/keycloak/bin/kcadm.sh') 
-      ? command 
-      : `/opt/keycloak/bin/kcadm.sh ${command}`;
-
-    addTerminalMessage('command', fullCommand);
-    setLoading(true);
-
-    let rawOutput = '';
+    setLoadingRoles(true);
+    const command = `get roles --server ${KEYCLOAK_SERVER}`;
+    const fullCommand = `/opt/keycloak/bin/kcadm.sh ${command}`;
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(API_BASE_URL + '/system/execute', {
+      const response = await fetch('http://localhost:3001/api/system/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: `docker exec -i keycloak ${fullCommand}` }),
@@ -2419,6 +2439,208 @@ const IdentityControl: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
+        const rawOutput = result.stdout || result.stderr || '';
+        
+        // JSON 파싱 시도
+        try {
+          const jsonMatch = rawOutput.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            let roles = [];
+            
+            if (Array.isArray(parsed)) {
+              roles = parsed;
+            } else if (parsed.data && Array.isArray(parsed.data)) {
+              roles = parsed.data;
+            } else if (typeof parsed === 'object') {
+              // 객체인 경우 values 추출
+              roles = Object.values(parsed).filter(v => v !== null && v !== undefined);
+            } else {
+              roles = [parsed];
+            }
+            
+            // 역할 이름 추출 (name 필드가 있으면 사용, 없으면 전체 객체 사용)
+            const rolesWithNames = roles.map((role: any) => {
+              if (typeof role === 'string') {
+                return { name: role };
+              } else if (role && typeof role === 'object' && role.name) {
+                return role;
+              } else if (role && typeof role === 'object') {
+                // name 필드가 없으면 id나 다른 필드 사용
+                return { name: role.id || role.role || JSON.stringify(role) };
+              }
+              return { name: String(role) };
+            });
+            
+            setAvailableRoles(rolesWithNames);
+          } else {
+            // 텍스트 형식인 경우 빈 배열로 설정
+            setAvailableRoles([]);
+          }
+        } catch (parseError) {
+          console.error('역할 파싱 오류:', parseError);
+          setAvailableRoles([]);
+        }
+      }
+    } catch (error: any) {
+      console.error('역할 목록 가져오기 실패:', error);
+      setAvailableRoles([]);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  // 사용자 생성 모달 열기
+  const handleOpenCreateUserModal = () => {
+    setCreateUserForm({ username: '', password: '', enabled: true });
+    setShowCreateUserModal(true);
+  };
+
+  // 사용자 생성 실행
+  const handleCreateUser = async () => {
+    if (!createUserForm.username.trim() || !createUserForm.password.trim()) {
+      addTerminalMessage('error', '사용자 이름과 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const command = `create users -s username=${createUserForm.username} -s enabled=${createUserForm.enabled} -s emailVerified=true --server ${KEYCLOAK_SERVER}`;
+    setLastExecutedCommands(prev => ({ ...prev, 'create users': command }));
+    await handleExecuteCommandDirect(command, true, false);
+    
+    // 비밀번호 설정
+    const passwordCommand = `set-password --username ${createUserForm.username} --new-password ${createUserForm.password} --server ${KEYCLOAK_SERVER}`;
+    setLastExecutedCommands(prev => ({ ...prev, 'set-password': passwordCommand }));
+    await handleExecuteCommandDirect(passwordCommand, true, false);
+    
+    // 모달 닫기
+    setShowCreateUserModal(false);
+  };
+
+  // 비밀번호 설정 모달 열기
+  const handleOpenSetPasswordModal = () => {
+    setSetPasswordForm({ username: '', password: '' });
+    setShowSetPasswordModal(true);
+  };
+
+  // 비밀번호 변경 실행
+  const handleSetPassword = async () => {
+    if (!setPasswordForm.username.trim() || !setPasswordForm.password.trim()) {
+      addTerminalMessage('error', '사용자 이름과 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const command = `set-password --username ${setPasswordForm.username} --new-password ${setPasswordForm.password} --server ${KEYCLOAK_SERVER}`;
+    setLastExecutedCommands(prev => ({ ...prev, 'set-password': command }));
+    await handleExecuteCommandDirect(command, true, false);
+    
+    // 모달 닫기
+    setShowSetPasswordModal(false);
+  };
+
+  // 역할 생성 모달 열기
+  const handleOpenCreateRoleModal = () => {
+    setCreateRoleForm({ name: '', description: '' });
+    setShowCreateRoleModal(true);
+  };
+
+  // 역할 생성 실행
+  const handleCreateRole = async () => {
+    if (!createRoleForm.name.trim()) {
+      addTerminalMessage('error', '역할 이름을 입력해주세요.');
+      return;
+    }
+
+    const description = createRoleForm.description.trim() 
+      ? `-s description="${createRoleForm.description}"` 
+      : '';
+    const command = `create roles -s name=${createRoleForm.name} ${description} --server ${KEYCLOAK_SERVER}`;
+    setLastExecutedCommands(prev => ({ ...prev, 'create roles': command }));
+    await handleExecuteCommandDirect(command, true, false);
+    
+    // 모달 닫기
+    setShowCreateRoleModal(false);
+  };
+
+  // 역할 할당 모달 열기
+  const handleOpenAssignRoleModal = async () => {
+    setAssignRoleForm({ username: '', roleName: '' });
+    setShowAssignRoleModal(true);
+    await fetchRoles();
+  };
+
+  // 역할 할당 실행
+  const handleAssignRole = async () => {
+    if (!assignRoleForm.username.trim() || !assignRoleForm.roleName.trim()) {
+      addTerminalMessage('error', '사용자 이름과 역할을 선택해주세요.');
+      return;
+    }
+
+    const command = `add-roles --uusername ${assignRoleForm.username} --rolename ${assignRoleForm.roleName} --server ${KEYCLOAK_SERVER}`;
+    setLastExecutedCommands(prev => ({ 
+      ...prev, 
+      'add-roles': command,
+      'assignRoleUsername': assignRoleForm.username,
+      'assignRoleName': assignRoleForm.roleName
+    }));
+    await handleExecuteCommandDirect(command, true, false);
+    
+    // 모달 닫기
+    setShowAssignRoleModal(false);
+  };
+
+  // 명령어 직접 실행 (토스트 포함)
+  const handleExecuteCommandDirect = async (command: string, retryOnSessionExpired = true, showResultModal = false) => {
+    if (!isTerminalConnected) {
+      addTerminalMessage('error', '먼저 Keycloak 쉘에 연결하세요.');
+      return null;
+    }
+
+    // 토스트 메시지 표시
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+
+    let fullCommand = command.startsWith('/opt/keycloak/bin/kcadm.sh') 
+      ? command 
+      : `/opt/keycloak/bin/kcadm.sh ${command}`;
+    
+    // --server 옵션이 없으면 추가
+    if (!fullCommand.includes('--server')) {
+      fullCommand = `${fullCommand} --server ${KEYCLOAK_SERVER}`;
+    }
+
+    addTerminalMessage('command', fullCommand);
+    setLoading(true);
+
+    let rawOutput = '';
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch('http://localhost:3001/api/system/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: `docker exec -i keycloak ${fullCommand}` }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const result = await response.json();
+        const output = result.stdout || result.stderr || '';
+        
+        // 세션 만료 오류 확인
+        if (output.includes('Session has expired') || output.includes('Login again')) {
+          if (retryOnSessionExpired) {
+            addTerminalMessage('output', '세션이 만료되었습니다. 자동으로 재로그인합니다...');
+            // 재로그인 시도
+            await executeKeycloakLogin();
+            // 명령어 재실행 (재시도 플래그를 false로 설정하여 무한 루프 방지)
+            return handleExecuteCommandDirect(command, false, showResultModal);
+          }
+        }
+        
         if (result.stdout) {
           addTerminalMessage('output', result.stdout);
           rawOutput = result.stdout; // 원본 출력 저장
@@ -2448,7 +2670,14 @@ const IdentityControl: React.FC = () => {
       setLoading(false);
       // 결과 저장 - 원본 출력을 저장 (파싱을 위해)
       setCommandResults(prev => ({ ...prev, [command]: rawOutput }));
+      
+      // 결과 모달 자동 표시
+      if (showResultModal && rawOutput) {
+        await handleShowResult(command);
+      }
     }
+    
+    return rawOutput;
   };
 
   // 결과 파싱 (Keycloak 명령어 결과를 구조화)
@@ -2556,8 +2785,127 @@ const IdentityControl: React.FC = () => {
     }
   };
 
+  // 역할에 할당된 사용자 목록 조회
+  const fetchRoleUsers = async (roleName: string) => {
+    if (!isTerminalConnected) {
+      return null;
+    }
+
+    try {
+      const command = `get roles/${roleName}/users --server ${KEYCLOAK_SERVER}`;
+      const fullCommand = `/opt/keycloak/bin/kcadm.sh ${command}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch('http://localhost:3001/api/system/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: `docker exec -i keycloak ${fullCommand}` }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const result = await response.json();
+        const output = result.stdout || result.stderr || '';
+        
+        // 결과 저장
+        setCommandResults(prev => ({ ...prev, [command]: output }));
+        return output;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('역할 사용자 조회 실패:', error);
+      return null;
+    }
+  };
+
+  // 사용자 역할 목록 조회
+  const fetchUserRoles = async (username: string) => {
+    if (!isTerminalConnected) {
+      return null;
+    }
+
+    try {
+      // 먼저 사용자 이름으로 사용자 정보 조회하여 ID 얻기
+      const getUserCommand = `get users --server ${KEYCLOAK_SERVER} -q username=${username}`;
+      const getUserFullCommand = `/opt/keycloak/bin/kcadm.sh ${getUserCommand}`;
+
+      const controller1 = new AbortController();
+      const timeoutId1 = setTimeout(() => controller1.abort(), 30000);
+
+      const userResponse = await fetch('http://localhost:3001/api/system/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: `docker exec -i keycloak ${getUserFullCommand}` }),
+        signal: controller1.signal
+      });
+
+      clearTimeout(timeoutId1);
+
+      if (!userResponse.ok) {
+        return null;
+      }
+
+      const userResult = await userResponse.json();
+      const userOutput = userResult.stdout || userResult.stderr || '';
+      
+      // 사용자 ID 추출
+      let userId = '';
+      try {
+        const jsonMatch = userOutput.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const users = Array.isArray(parsed) ? parsed : [parsed];
+          const user = users.find((u: any) => u.username === username);
+          if (user && user.id) {
+            userId = user.id;
+          }
+        }
+      } catch (e) {
+        console.error('사용자 정보 파싱 실패:', e);
+        return null;
+      }
+
+      if (!userId) {
+        return `사용자 "${username}"을(를) 찾을 수 없습니다.`;
+      }
+
+      // 사용자 ID로 역할 목록 조회
+      const command = `get users/${userId}/role-mappings/realm --server ${KEYCLOAK_SERVER}`;
+      const fullCommand = `/opt/keycloak/bin/kcadm.sh ${command}`;
+
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 30000);
+
+      const response = await fetch('http://localhost:3001/api/system/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: `docker exec -i keycloak ${fullCommand}` }),
+        signal: controller2.signal
+      });
+
+      clearTimeout(timeoutId2);
+
+      if (response.ok) {
+        const result = await response.json();
+        const output = result.stdout || result.stderr || '';
+        
+        // 결과 저장
+        setCommandResults(prev => ({ ...prev, [command]: output }));
+        return output;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('사용자 역할 조회 실패:', error);
+      return null;
+    }
+  };
+
   // 결과 보기
-  const handleShowResult = (command: string) => {
+  const handleShowResult = async (command: string) => {
     const rawResult = commandResults[command];
     if (!rawResult || rawResult.trim() === '') {
       setSelectedCommandResult('아직 실행된 명령어가 없습니다.');
@@ -2565,6 +2913,86 @@ const IdentityControl: React.FC = () => {
       setParsedKeycloakData(null);
       setShowResultModal(true);
       return;
+    }
+    
+    // 역할 할당 명령어인 경우 사용자 역할 목록과 역할에 할당된 사용자 목록도 함께 조회
+    if (command.includes('add-roles')) {
+      const username = lastExecutedCommands['assignRoleUsername'];
+      const roleName = lastExecutedCommands['assignRoleName'];
+      
+      if (username && roleName) {
+        // 사용자 역할 목록 조회
+        const userRolesResult = await fetchUserRoles(username);
+        // 역할에 할당된 사용자 목록 조회
+        const roleUsersResult = await fetchRoleUsers(roleName);
+        
+        if (userRolesResult || roleUsersResult) {
+          // 역할 할당 결과와 사용자 역할 목록, 역할에 할당된 사용자 목록을 함께 표시
+          let combinedResult = `=== 역할 할당 결과 ===\n${rawResult}\n\n`;
+          
+          if (userRolesResult) {
+            combinedResult += `=== 사용자 "${username}"의 현재 역할 목록 ===\n${userRolesResult}\n\n`;
+            
+            // JSON 파싱 시도
+            const jsonMatch = userRolesResult.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+            if (jsonMatch) {
+              try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  // 할당된 역할이 목록에 있는지 확인
+                  const assignedRole = parsed.find((role: any) => 
+                    (role.name === roleName) || (role.role === roleName)
+                  );
+                  
+                  if (assignedRole) {
+                    combinedResult += `✅ 역할 "${roleName}"이(가) 사용자 "${username}"에게 성공적으로 할당되었습니다.\n\n`;
+                  } else {
+                    combinedResult += `⚠️ 역할 "${roleName}"이(가) 사용자 "${username}"의 역할 목록에 보이지 않습니다.\n\n`;
+                  }
+                }
+              } catch (e) {
+                console.error('JSON 파싱 실패:', e);
+              }
+            }
+          }
+          
+          if (roleUsersResult) {
+            combinedResult += `=== 역할 "${roleName}"이(가) 할당된 사용자 목록 ===\n${roleUsersResult}`;
+            
+            // JSON 파싱 시도
+            const jsonMatch = roleUsersResult.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+            if (jsonMatch) {
+              try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  // 할당된 사용자가 목록에 있는지 확인
+                  const assignedUser = parsed.find((user: any) => 
+                    (user.username === username) || (user.id && user.username === username)
+                  );
+                  
+                  if (assignedUser) {
+                    combinedResult += `\n\n✅ 사용자 "${username}"이(가) 역할 "${roleName}"의 할당 목록에 있습니다.`;
+                  }
+                  
+                  // 역할에 할당된 모든 사용자 목록 표시
+                  const userList = parsed.map((user: any) => user.username || user.id).join(', ');
+                  if (userList) {
+                    combinedResult += `\n\n📋 역할 "${roleName}"이(가) 할당된 사용자: ${userList}`;
+                  }
+                }
+              } catch (e) {
+                console.error('JSON 파싱 실패:', e);
+              }
+            }
+          }
+          
+          setSelectedCommandResult(combinedResult);
+          setResultType('text');
+          setParsedKeycloakData(null);
+          setShowResultModal(true);
+          return;
+        }
+      }
     }
     
     // 명령어 실행 실패 에러인지 확인
@@ -2878,7 +3306,7 @@ const IdentityControl: React.FC = () => {
         {/* 터미널 화면 */}
         <div 
           ref={terminalRef}
-          className="bg-gray-900 text-[#10113C] rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm"
+          className="bg-gray-900 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm"
         >
           {terminalMessages.length === 0 ? (
             <div className="text-gray-500 text-center py-8">
@@ -2888,7 +3316,7 @@ const IdentityControl: React.FC = () => {
             terminalMessages.map((message) => (
               <div key={message.id} className={`mb-1 ${
                 message.type === 'command' ? 'text-yellow-400' :
-                message.type === 'error' ? 'text-red-400' : 'text-[#10113C]'
+                message.type === 'error' ? 'text-red-400' : 'text-gray-100'
               }`}>
                 {message.type === 'command' && <span className="text-blue-400">$ </span>}
                 <span className="whitespace-pre-wrap">{message.content}</span>
@@ -3493,7 +3921,19 @@ const IdentityControl: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExecuteCommandDirect(example.command);
+                    // 특정 명령어는 모달 열기
+                    if (example.name === '사용자 생성') {
+                      handleOpenCreateUserModal();
+                    } else if (example.name === '비밀번호 변경') {
+                      handleOpenSetPasswordModal();
+                    } else if (example.name === '역할 생성') {
+                      handleOpenCreateRoleModal();
+                    } else if (example.name === '사용자에게 역할 할당') {
+                      handleOpenAssignRoleModal();
+                    } else {
+                      // 나머지는 기존대로 실행
+                      handleExecuteCommandDirect(example.command);
+                    }
                   }}
                   disabled={!isTerminalConnected || loading}
                   className="flex items-center space-x-1 bg-[#10113C] text-white px-3 py-1.5 rounded text-sm hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
@@ -3502,11 +3942,46 @@ const IdentityControl: React.FC = () => {
                   <span>실행</span>
                 </button>
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    handleShowResult(example.command);
+                    // 예시 명령어에서 기능 타입 추출
+                    let commandKey = '';
+                    if (example.command.includes('create users')) {
+                      commandKey = 'create users';
+                    } else if (example.command.includes('set-password')) {
+                      commandKey = 'set-password';
+                    } else if (example.command.includes('create roles')) {
+                      commandKey = 'create roles';
+                    } else if (example.command.includes('add-roles')) {
+                      commandKey = 'add-roles';
+                    } else {
+                      // 나머지는 예시 명령어 그대로 사용
+                      commandKey = example.command;
+                    }
+                    
+                    // 마지막 실행한 명령어가 있으면 그것을 사용, 없으면 예시 명령어 사용
+                    const actualCommand = lastExecutedCommands[commandKey] || example.command;
+                    await handleShowResult(actualCommand);
                   }}
-                  disabled={!commandResults[example.command]}
+                  disabled={(() => {
+                    // 예시 명령어에서 기능 타입 추출
+                    let commandKey = '';
+                    if (example.command.includes('create users')) {
+                      commandKey = 'create users';
+                    } else if (example.command.includes('set-password')) {
+                      commandKey = 'set-password';
+                    } else if (example.command.includes('create roles')) {
+                      commandKey = 'create roles';
+                    } else if (example.command.includes('add-roles')) {
+                      commandKey = 'add-roles';
+                    } else {
+                      commandKey = example.command;
+                    }
+                    
+                    // 마지막 실행한 명령어가 있으면 그것을 확인, 없으면 예시 명령어 확인
+                    const actualCommand = lastExecutedCommands[commandKey] || example.command;
+                    return !commandResults[actualCommand];
+                  })()}
                   className="flex items-center space-x-1 bg-gray-600 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   <Eye className="w-3 h-3" />
@@ -3522,6 +3997,248 @@ const IdentityControl: React.FC = () => {
       {showToast && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-[#10113C] text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-top-5">
           명령어가 실행됩니다
+        </div>
+      )}
+
+      {/* 사용자 생성 모달 */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateUserModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">사용자 생성</h3>
+              <button
+                onClick={() => setShowCreateUserModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={createUserForm.username}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="사용자 이름을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                <input
+                  type="password"
+                  value={createUserForm.password}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="비밀번호를 입력하세요"
+                />
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={createUserForm.enabled}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, enabled: e.target.checked })}
+                  className="w-4 h-4 text-[#10113C] border-gray-300 rounded focus:ring-[#10113C]"
+                />
+                <label className="ml-2 text-sm text-gray-700">계정 활성화</label>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowCreateUserModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={!createUserForm.username.trim() || !createUserForm.password.trim()}
+                  className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  생성
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 비밀번호 설정 모달 */}
+      {showSetPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSetPasswordModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">비밀번호 변경</h3>
+              <button
+                onClick={() => setShowSetPasswordModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={setPasswordForm.username}
+                  onChange={(e) => setSetPasswordForm({ ...setPasswordForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="사용자 이름을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                <input
+                  type="password"
+                  value={setPasswordForm.password}
+                  onChange={(e) => setSetPasswordForm({ ...setPasswordForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="새 비밀번호를 입력하세요"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowSetPasswordModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSetPassword}
+                  disabled={!setPasswordForm.username.trim() || !setPasswordForm.password.trim()}
+                  className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  변경
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 역할 생성 모달 */}
+      {showCreateRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">역할 생성</h3>
+              <button
+                onClick={() => setShowCreateRoleModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">역할 이름</label>
+                <input
+                  type="text"
+                  value={createRoleForm.name}
+                  onChange={(e) => setCreateRoleForm({ ...createRoleForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="역할 이름을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">설명 (선택사항)</label>
+                <input
+                  type="text"
+                  value={createRoleForm.description}
+                  onChange={(e) => setCreateRoleForm({ ...createRoleForm, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="역할 설명을 입력하세요"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowCreateRoleModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCreateRole}
+                  disabled={!createRoleForm.name.trim()}
+                  className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  생성
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 역할 할당 모달 */}
+      {showAssignRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAssignRoleModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">사용자에게 역할 할당</h3>
+              <button
+                onClick={() => setShowAssignRoleModal(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={assignRoleForm.username}
+                  onChange={(e) => setAssignRoleForm({ ...assignRoleForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  placeholder="사용자 이름을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">역할 선택</label>
+                {loadingRoles ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-500 text-center">
+                    역할 목록 로딩 중...
+                  </div>
+                ) : (
+                  <select
+                    value={assignRoleForm.roleName}
+                    onChange={(e) => setAssignRoleForm({ ...assignRoleForm, roleName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10113C]"
+                  >
+                    <option value="">역할을 선택하세요</option>
+                    {availableRoles.map((role, index) => {
+                      const roleName = typeof role === 'object' && role.name ? role.name : (typeof role === 'string' ? role : String(role));
+                      return (
+                        <option key={index} value={roleName}>
+                          {roleName}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+                {availableRoles.length === 0 && !loadingRoles && (
+                  <p className="text-xs text-gray-500 mt-1">역할이 없습니다. 먼저 역할을 생성해주세요.</p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowAssignRoleModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleAssignRole}
+                  disabled={!assignRoleForm.username.trim() || !assignRoleForm.roleName.trim() || loadingRoles}
+                  className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  할당
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
