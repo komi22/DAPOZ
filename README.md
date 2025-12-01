@@ -25,7 +25,7 @@ node server/index.cjs
 
 ## Preview 
 <!-- 480px -->
-<img src="https://raw.githubusercontent.com/komi22/DAPOZ/refs/heads/main/DAPOZ.png?token=GHSAT0AAAAAADO6RTJHC3P2NBFKSXSSVGMI2JBZYXQ" width="480" alt="DAPOZ">
+<img src="https://github.com/komi22/DAPOZ/blob/main/DAPOZ.png?raw=true" width="480" alt="DAPOZ">
 
 
 ## Remind
