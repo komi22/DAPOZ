@@ -21,21 +21,26 @@ interface EvaluationResult {
   }
 }
 
+interface ThreatReportStoredResult {
+  evaluationResult: EvaluationResult | null
+  detectedScenarios: string[]
+}
+
 const DiagnosisEvaluation: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
-  // ✅ 개별 표시용
+  // 개별 표시용
   const [checklistScore, setChecklistScore] = useState<number | null>(null)
   const [assetScore, setAssetScore] = useState<number | null>(null)
   const [assetLTotal, setAssetLTotal] = useState<number | null>(null)
 
-  // ✅ Final 시트 B1 (UI 표기: 체크리스트 진단 점수)
+  // Final 시트 B1 (UI 표기: 체크리스트 진단 점수)
   const [finalSheetValue, setFinalSheetValue] = useState<number | string | null>(null)
   const [finalSheetError, setFinalSheetError] = useState<string | null>(null)
 
-  // ✅ 서버 응답의 보조 필드 표시용 상태
+  // 서버 응답의 보조 필드 표시용 상태
   const [serverDetected, setServerDetected] = useState<string[]>([])
   const [serverThreatScore, setServerThreatScore] = useState<number | null>(null)     // 0~1
   const [serverChecklistScore, setServerChecklistScore] = useState<number | null>(null) // 0~1
@@ -184,7 +189,7 @@ const DiagnosisEvaluation: React.FC = () => {
     return { score, lTotal }
   }
 
-  // ✅ 분석 시작: 서버 호출 버전
+  // 분석 시작: 서버 호출 버전
   const handleAnalyze = async () => {
     if (uploadedFiles.length !== 1) {
       alert('성숙도/자산 체크리스트 파일을 업로드해주세요.')
@@ -267,6 +272,32 @@ const DiagnosisEvaluation: React.FC = () => {
           threatScenario: 0
         }
       })
+
+      // ✅ 위협 개선 리포팅에서 사용할 최근 진단 결과를 브라우저에 저장
+      try {
+        const stored: ThreatReportStoredResult = {
+          evaluationResult: {
+            totalScore: zeroTrustPct,
+            maturityLevel: mappedLevel,
+            maturityDescription: data?.maturity?.meaning || '',
+            breakdown: {
+              maturity: Math.max(0, Math.min(100, Math.round((data?.checklistScore || 0) * 100))),
+              asset: Math.max(0, Math.min(100, Math.round((data?.threatScore || 0) * 100))),
+              threatModeling: 0,
+              threatScenario: 0
+            }
+          },
+          detectedScenarios: Array.isArray(data?.detectedScenarios)
+            ? data.detectedScenarios
+            : []
+        }
+
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('dapo:lastDiagnosisResult', JSON.stringify(stored))
+        }
+      } catch (e) {
+        console.warn('마지막 진단 결과 저장 실패(무시 가능):', e)
+      }
     } catch (e) {
       console.error('분석 중 오류:', e)
       alert((e as Error).message || '분석 중 오류가 발생했습니다.')
