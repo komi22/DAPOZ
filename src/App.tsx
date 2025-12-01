@@ -18,6 +18,9 @@ import Sbom from './pages/Sbom'
 
 import DeviceControl from './pages/DeviceControl'
 
+// 위협 개선 리포팅 페이지 추가 (파일명이 threatreport.tsx 라는 전제)
+import ThreatReport from './pages/threatreport'
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
@@ -37,7 +40,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/zt-policy-apply" element={<Navigate to="/zt-policy-apply/integrated" replace />} />
+          <Route
+            path="/zt-policy-apply"
+            element={<Navigate to="/zt-policy-apply/integrated" replace />}
+          />
           <Route path="/zt-policy-apply/integrated" element={<IntegratedControl />} />
           <Route path="/zt-policy-apply/identity" element={<IdentityControl />} />
           <Route path="/zt-policy-apply/network" element={<NetworkControl />} />
@@ -48,12 +54,26 @@ function App() {
               원본 파일에는 없었던 라우트 - 디바이스 필라 기능 추가 시 새로 생성됨
               ============================================ */}
           <Route path="/zt-policy-apply/device" element={<DeviceControl />} />
-          <Route path="/zt-policy-diagnosis" element={<Navigate to="/zt-policy-diagnosis/checklist" replace />} />
+
+          <Route
+            path="/zt-policy-diagnosis"
+            element={<Navigate to="/zt-policy-diagnosis/checklist" replace />}
+          />
           <Route path="/zt-policy-diagnosis/checklist" element={<ZTChecklist />} />
-          <Route path="/zt-policy-diagnosis/diagnosis-evaluation" element={<DiagnosisEvaluation />} />
+          <Route
+            path="/zt-policy-diagnosis/diagnosis-evaluation"
+            element={<DiagnosisEvaluation />}
+          />
           <Route path="/zt-policy-diagnosis/evaluation" element={<ZTEvaluation />} />
           <Route path="/zt-policy-diagnosis/attack-test" element={<ZTAttackTest />} />
           <Route path="/zt-policy-diagnosis/main" element={<ZTPolicyDiagnosis />} />
+
+          {/* 새로 추가된 라우트: 위협 개선 리포팅 */}
+          <Route
+            path="/zt-policy-diagnosis/threat-report"
+            element={<ThreatReport />}
+          />
+
           <Route path="/undeveloped" element={<Undeveloped />} />
           <Route path="/zt-policy-apply/sbom" element={<Sbom />} />
         </Routes>
