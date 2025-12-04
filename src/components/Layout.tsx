@@ -1,6 +1,25 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import {LayoutDashboard, Shield, Settings, ChevronDown, ChevronRight, Network, Cpu, Users, FileCheck, Search, Target, AlertTriangle, Menu, X, Database, Monitor, AppWindow, SearchCheck} from 'lucide-react'
+import {
+  LayoutDashboard,
+  Shield,
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  Network,
+  Cpu,
+  Users,
+  FileCheck,
+  Search,
+  Target,
+  AlertTriangle,
+  Menu,
+  X,
+  Database,
+  Monitor,
+  AppWindow,
+  SearchCheck
+} from 'lucide-react'
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation()
@@ -77,6 +96,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           title: '진단 평가',
           icon: SearchCheck,
           path: '/zt-policy-diagnosis/diagnosis-evaluation'
+        },
+        {
+          title: '위협 개선 리포팅',
+          icon: AlertTriangle,
+          path: '/zt-policy-diagnosis/threat-report'
+        },
+        // ✅ 새로 추가된 메뉴: 공격 테스트
+        {
+          title: '공격 테스트',
+          icon: Target,
+          path: '/zt-policy-diagnosis/attack-test'
         }
       ]
     }
@@ -93,7 +123,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="w-64 bg-slate-900 shadow-lg border-r border-slate-800 flex flex-col fixed h-screen">
       <div className="p-6 border-b border-slate-800">
         <div className="flex items-center space-x-3">
-          <img src="/logo/Dapoz_logo.png" alt="DAPOZ Logo" className="w-12 h-12 rounded-xl object-cover" />
+          <img
+            src="/logo/Dapoz_logo.png"
+            alt="DAPOZ Logo"
+            className="w-12 h-12 rounded-xl object-cover"
+          />
           <div>
             <h1 className="text-xl font-bold text-white">Dapoz</h1>
             <p className="text-sm text-white">Security Dashboard</p>
@@ -107,31 +141,35 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {item.submenu ? (
               <div>
                 <button
-                  onClick={() => toggleMenu(item.key!)}
+                  onClick={() => toggleMenu((item as any).key!)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                    expandedMenus[item.key!] ? 'bg-[#E8F0F8]/30 text-white font-bold' : 'text-white hover:bg-slate-800'
+                    expandedMenus[(item as any).key!]
+                      ? 'bg-[#E8F0F8]/30 text-white font-bold'
+                      : 'text-white hover:bg-slate-800'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <item.icon className="w-5 h-5" />
                     <span>{item.title}</span>
                   </div>
-                  {expandedMenus[item.key!] ? (
+                  {expandedMenus[(item as any).key!] ? (
                     <ChevronDown className="w-4 h-4" />
                   ) : (
                     <ChevronRight className="w-4 h-4" />
                   )}
                 </button>
-                {expandedMenus[item.key!] && (
+                {expandedMenus[(item as any).key!] && (
                   <div className="mt-2 ml-4 space-y-1">
-                    {item.submenu.map((subItem) => (
+                    {item.submenu.map((subItem: any) => (
                       <div key={subItem.path || subItem.title}>
                         {subItem.submenu ? (
                           <div>
                             <button
                               onClick={() => toggleMenu(subItem.key!)}
                               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                                expandedMenus[subItem.key!] ? 'bg-[#E8F0F8]/30 text-white font-bold' : 'text-white hover:bg-slate-800'
+                                expandedMenus[subItem.key!]
+                                  ? 'bg-[#E8F0F8]/30 text-white font-bold'
+                                  : 'text-white hover:bg-slate-800'
                               }`}
                             >
                               <div className="flex items-center space-x-3">
@@ -146,7 +184,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             </button>
                             {expandedMenus[subItem.key!] && (
                               <div className="mt-1 ml-4 space-y-1">
-                                {subItem.submenu.map((nestedItem) => (
+                                {subItem.submenu.map((nestedItem: any) => (
                                   <Link
                                     key={nestedItem.path}
                                     to={nestedItem.path}
@@ -183,9 +221,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </div>
             ) : (
               <Link
-                to={item.path!}
+                to={(item as any).path!}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActiveRoute(item.path!)
+                  isActiveRoute((item as any).path!)
                     ? 'bg-[#E8F0F8]/30 text-white font-bold'
                     : 'text-white hover:bg-slate-800'
                 }`}
@@ -231,7 +269,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
           <div className="absolute left-0 top-0 h-full">
             <Sidebar />
           </div>
