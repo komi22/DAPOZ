@@ -57,6 +57,12 @@ const IdentityControl: React.FC = () => {
   const [parsedKeycloakData, setParsedKeycloakData] = useState<any>(null);
   const [resultType, setResultType] = useState<'text' | 'json' | 'array' | 'object'>('text');
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  const [teleportTesting, setTeleportTesting] = useState(false);
+  const [teleportConfig, setTeleportConfig] = useState<{ proxyUrl: string; connectorName: string }>({
+    proxyUrl: '',
+    connectorName: 'keycloak',
+  });
+
   
   // 실시간 로그 관련 상태
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
@@ -2618,6 +2624,85 @@ const IdentityControl: React.FC = () => {
     window.open('http://localhost:8080', '_blank');
   };
 
+  const testTeleportIntegration = async () => {
+    if (!teleportConfig.proxyUrl || teleportConfig.proxyUrl.trim().length === 0) {
+      setSelectedCommandResult('Teleport Proxy URL을 먼저 입력해주세요.');
+      setResultType('text');
+      setParsedKeycloakData(null);
+      setShowResultModal(true);
+      return;
+    }
+
+    try {
+      setTeleportTesting(true);
+      setError('');
+      const response = await fetch(API_BASE_URL + '/teleport/sso-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          proxyUrl: teleportConfig.proxyUrl.trim(),
+          connectorName: teleportConfig.connectorName.trim() || 'keycloak',
+        }),
+      });
+
+      if (!response.ok) {
+        const textBody = await response.text().catch(() => '');
+        setSelectedCommandResult(
+          `Teleport 연동 테스트 실패 (HTTP ${response.status})\n\n${textBody || '백엔드에서 반환된 오류 메시지가 없습니다.'}`
+        );
+        setResultType('text');
+        setParsedKeycloakData(null);
+        setShowResultModal(true);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json().catch(() => null);
+        if (data) {
+          if (Array.isArray(data)) {
+            setParsedKeycloakData(data);
+            setResultType('array');
+            setSelectedCommandResult('');
+          } else {
+            setSelectedCommandResult(
+              data.message
+                ? `${data.message}${data.details ? '\n\n' + JSON.stringify(data.details, null, 2) : ''}`
+                : JSON.stringify(data, null, 2)
+            );
+            setResultType('text');
+            setParsedKeycloakData(null);
+          }
+        } else {
+          setSelectedCommandResult('Teleport 연동 테스트가 성공했지만 반환된 데이터가 없습니다.');
+          setResultType('text');
+          setParsedKeycloakData(null);
+        }
+      } else {
+        const textBody = await response.text().catch(() => '');
+        setSelectedCommandResult(
+          textBody && textBody.trim().length > 0
+            ? textBody
+            : 'Teleport 연동 테스트가 성공적으로 완료되었습니다.'
+        );
+        setResultType('text');
+        setParsedKeycloakData(null);
+      }
+
+      setShowResultModal(true);
+    } catch (e: any) {
+      console.error('Teleport 연동 테스트 오류:', e);
+      setSelectedCommandResult(`Teleport 연동 테스트 중 오류가 발생했습니다.\n\n${e?.message || e}`);
+      setResultType('text');
+      setParsedKeycloakData(null);
+      setShowResultModal(true);
+    } finally {
+      setTeleportTesting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -2833,6 +2918,74 @@ const IdentityControl: React.FC = () => {
             Keycloak 컨테이너 정보를 불러오는 중...
           </div>
         )}
+      </div>
+
+
+      {/* Teleport 연동 */}
+      <div className="bg-white rounded-xl shadow-sm border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Shield className="w-6 h-6 text-indigo-600" />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Teleport 연동
+              </h2>
+              <p className="text-sm text-gray-500">
+                Teleport Proxy URL과 SAML 커넥터 이름을 입력한 뒤 연동 테스트를 수행합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Teleport Proxy URL
+            </label>
+            <input
+              type="text"
+              value={teleportConfig.proxyUrl}
+              onChange={(e) =>
+                setTeleportConfig((prev) => ({ ...prev, proxyUrl: e.target.value }))
+              }
+              placeholder="https://mytenant.teleport.sh"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Teleport Proxy Service가 노출된 주소를 입력하세요.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              SAML 커넥터 이름
+            </label>
+            <input
+              type="text"
+              value={teleportConfig.connectorName}
+              onChange={(e) =>
+                setTeleportConfig((prev) => ({ ...prev, connectorName: e.target.value }))
+              }
+              placeholder="keycloak"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Teleport에 생성된 SAML 커넥터 이름을 입력하세요 (예: keycloak).
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={testTeleportIntegration}
+          disabled={teleportTesting}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white hover:bg-[#10113C]/90 disabled:bg-gray-400 transition-colors"
+          style={{ backgroundColor: teleportTesting ? '#9CA3AF' : '#10113C' }}
+        >
+          {teleportTesting ? (
+            <div className="mr-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+          ) : (
+            <Shield className="w-4 h-4 mr-2" />
+          )}
+          <span>{teleportTesting ? 'Teleport 연동 테스트 중...' : 'Teleport 연동 테스트 실행'}</span>
+        </button>
       </div>
 
       {/* 인터랙티브 터미널 */}
