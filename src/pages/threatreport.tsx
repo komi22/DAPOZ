@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react'
 import {
   ShieldCheck,
-  FileText,
   AlertTriangle,
   Info,
   ListChecks,
   Search,
   BookOpen
 } from 'lucide-react'
+
+type Severity = 'low' | 'medium' | 'high'
 
 interface EvaluationResult {
   totalScore: number
@@ -42,6 +43,44 @@ interface ThreatGuide {
   rationale: string    // 판단 근거
   situation: string    // 로그 발생 가능 상황
   improvement: string  // 개선책
+  severity: Severity   // 위험도 (하/중/상)
+}
+
+// 위험도별 UI 메타
+function getSeverityMeta(severity: Severity) {
+  switch (severity) {
+    case 'high':
+      return {
+        label: '상',
+        titleClass: 'text-red-700',
+        badgeClass:
+          'bg-red-50 text-red-700 border border-red-200',
+        descContainerClass:
+          'bg-red-50/80 border border-red-200',
+        descTitleClass: 'text-red-700'
+      }
+    case 'medium':
+      return {
+        label: '중',
+        titleClass: 'text-orange-700',
+        badgeClass:
+          'bg-orange-50 text-orange-700 border border-orange-200',
+        descContainerClass:
+          'bg-orange-50/80 border border-orange-200',
+        descTitleClass: 'text-orange-700'
+      }
+    case 'low':
+    default:
+      return {
+        label: '하',
+        titleClass: 'text-yellow-700',
+        badgeClass:
+          'bg-yellow-50 text-yellow-700 border border-yellow-200',
+        descContainerClass:
+          'bg-yellow-50/80 border border-yellow-200',
+        descTitleClass: 'text-yellow-700'
+      }
+  }
 }
 
 const THREAT_GUIDES: ThreatGuide[] = [
@@ -59,7 +98,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Process Name, Process ID를 봤을 때 비표준 경로나 도구 이름이 확인되면 의심 덤프 도구 실행을 확인할 수 있다.
 - Target Server > Target Server Name이 localhost 외 원격 서버라면, 자격 증명 덤프 후 PtH 기반 측면 이동 가능성을 의심할 수 있다.`,
     situation: `이 이벤트는 프로세스가 해당 계정의 자격 증명을 명시적으로 지정하여 계정 로그온을 시도할 때 생성된다. 예약된 작업, RUNAS 명령, 배치 작업 구성 등에서 자주 발생하며, 정상적인 운영 체제 활동에서도 주기적으로 발생하는 일상적인 이벤트이지만, 자격 증명 덤프 위협 측정 시 반드시 확인해야 하는 이벤트 로그이다.`,
-    improvement: `자격 증명 덤프와 PtH 공격을 막기 위해서는 크리덴셜을 저장·관리하는 LSASS와 Kerberos/NTLM 자격 증명 저장소를 보호해야 한다. 또한 불필요한 관리자 권한과 계정 전환 경로를 최소화해 공격자가 확보한 해시나 토큰을 재사용하지 못하도록 해야 한다.`
+    improvement: `자격 증명 덤프와 PtH 공격을 막기 위해서는 크리덴셜을 저장·관리하는 LSASS와 Kerberos/NTLM 자격 증명 저장소를 보호해야 한다. 또한 불필요한 관리자 권한과 계정 전환 경로를 최소화해 공격자가 확보한 해시나 토큰을 재사용하지 못하도록 해야 한다.`,
+    severity: 'high'
   },
 
   // 2. T1550 Pass-the-Hash
@@ -73,7 +113,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `LogonType, AuthenticationPackage`,
     rationale: `원격·로컬을 불문하고 해시 기반 인증이 성공할 때 남는 핵심 이벤트로, 대부분의 PtH 네트워크 이동이 남는 로그이다. 단일 이벤트로 로그인(인증) 여부를 확인할 수 있는 최선의 지표이기 때문에 PtH 탐지에 매우 중요하다.`,
     situation: `해시 기반 인증 명령이 사용될 때, LogonUser() API가 호출될 때, 원격 명령 실행 도구가 해시를 사용해 세션을 만드는 경우, Kerberos 대신 NTLM 해시 인증이 강제로 사용되는 경우에 발생한다.`,
-    improvement: `Pass-the-Hash 공격을 막기 위해서는 해시 기반 인증 자체가 악용되지 않도록 자격 증명 저장소(LSASS, Kerberos 캐시, NTLM 해시)를 보호하고, NTLM 사용을 최소화하며 가능한 Kerberos 기반 인증으로 강제하는 것이 중요하다. 또한 관리자 계정을 최소화하고, 동일 계정의 원격 인증·측면 이동 경로를 제한해 공격자가 탈취한 해시를 재사용할 기회를 줄여야 한다.`
+    improvement: `Pass-the-Hash 공격을 막기 위해서는 해시 기반 인증 자체가 악용되지 않도록 자격 증명 저장소(LSASS, Kerberos 캐시, NTLM 해시)를 보호하고, NTLM 사용을 최소화하며 가능한 Kerberos 기반 인증으로 강제하는 것이 중요하다. 또한 관리자 계정을 최소화하고, 동일 계정의 원격 인증·측면 이동 경로를 제한해 공격자가 탈취한 해시를 재사용할 기회를 줄여야 한다.`,
+    severity: 'high'
   },
 
   // 3. T1134 토큰 조작
@@ -91,7 +132,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - ProcessName으로 특권 변경을 수행한 프로세스 경로·이름을 통해 공격 도구 여부를 판단할 수 있다.
 - SubjectLogonId로 동일 세션에서 반복적인 특권 상승 시도를 식별할 수 있다.`,
     situation: `토큰 조작에 필요한 고위험 특권(SeDebugPrivilege, SeImpersonatePrivilege 등)을 활성화하거나 사용할 때 발생한다. 일반 사용자 환경에서는 거의 사용되지 않는 특권이기 때문에, 비정상 프로세스나 비표준 경로에서 실행된 도구가 특권을 조정하면 토큰 복제·가장에 의한 권한 상승 시도로 의심할 수 있다.`,
-    improvement: `토큰 조작 공격을 방지하기 위해서는 토큰 변조에 사용되는 고위험 특권을 최소화하고, 일반 사용자나 비정상 프로세스가 이러한 특권을 활성화하지 못하도록 권한·그룹 구성을 강화해야 한다. 또 RunAs·Impersonation·특권 상승이 가능한 모든 경로를 줄여 토큰 기반 권한 상승 자체가 어렵도록 만들어야 한다.`
+    improvement: `토큰 조작 공격을 방지하기 위해서는 토큰 변조에 사용되는 고위험 특권을 최소화하고, 일반 사용자나 비정상 프로세스가 이러한 특권을 활성화하지 못하도록 권한·그룹 구성을 강화해야 한다. 또 RunAs·Impersonation·특권 상승이 가능한 모든 경로를 줄여 토큰 기반 권한 상승 자체가 어렵도록 만들어야 한다.`,
+    severity: 'high'
   },
 
   // 4. T1021 원격 서비스 악용
@@ -108,7 +150,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - AuthenticationPackage가 NTLM이면 Kerberos 대신 NTLM이 강제되어 사용된 측면 이동·자격 증명 재사용 가능성을 의심할 수 있다.
 - Account Name, Logon Process Name으로 어떤 계정이 어떤 원격 프로세스를 통해 접속했는지 확인해 비정상 계정 사용 여부를 판단할 수 있다.`,
     situation: `공격자가 SMB, RDP, WMI, WinRM 등 원격 서비스 기능을 이용해 다른 시스템에 로그인하거나 원격 명령을 실행할 때 발생한다. LogonType이 3 또는 10이면 원격 접속이 실제로 수행된 것으로 볼 수 있고, PSExec/WMIexec 등의 원격 실행 도구 사용 시 반복적으로 기록된다.`,
-    improvement: `원격 서비스 악용을 막기 위해서는 RDP, SMB, WMI, WinRM 등 원격 로그인 경로를 최소화하고, 허용된 사용자와 시스템만 원격 인증을 수행하도록 접근 통제를 강화해야 한다. Kerberos 기반 인증을 우선 적용하고 NTLM 사용을 줄이며, 원격 로그인(LogonType 3·10)에 대해 비정상 계정·호스트 조합을 정밀 모니터링해야 한다.`
+    improvement: `원격 서비스 악용을 막기 위해서는 RDP, SMB, WMI, WinRM 등 원격 로그인 경로를 최소화하고, 허용된 사용자와 시스템만 원격 인증을 수행하도록 접근 통제를 강화해야 한다. Kerberos 기반 인증을 우선 적용하고 NTLM 사용을 줄이며, 원격 로그인(LogonType 3·10)에 대해 비정상 계정·호스트 조합을 정밀 모니터링해야 한다.`,
+    severity: 'high'
   },
 
   // 5. T1570 도구 전송
@@ -125,7 +168,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - RelativeTargetName으로 어떤 경로에 파일이 생성됐는지 파악해 도구 복사 여부를 확인할 수 있다.
 - AccessMask에서 WriteData, AppendData 등이 있으면 원격 파일 업로드 흔적으로 판단할 수 있다.`,
     situation: `공격자가 SMB/Windows 관리자 공유를 통해 원격 시스템에 파일을 복사하거나 새 파일을 생성할 때 발생한다. 침해된 환경 내부에서 공격 도구, 스크립트, 백도어 등을 다른 시스템으로 전송 및 스테이징할 때 반복적으로 나타난다.`,
-    improvement: `도구 전송 공격을 막기 위해서는 SMB 관리자 공유(C$, ADMIN$ 등)와 원격 파일 전송 프로토콜을 최소화하거나 접근 대상을 제한해야 한다. 쓰기 작업이 실제로 수행되는 공유 폴더를 감시해 비정상적인 파일 업로드 패턴을 탐지하고, 계정 권한 최소화와 공유 권한 세분화로 스테이징 자체를 어렵게 만들어야 한다.`
+    improvement: `도구 전송 공격을 막기 위해서는 SMB 관리자 공유(C$, ADMIN$ 등)와 원격 파일 전송 프로토콜을 최소화하거나 접근 대상을 제한해야 한다. 쓰기 작업이 실제로 수행되는 공유 폴더를 감시해 비정상적인 파일 업로드 패턴을 탐지하고, 계정 권한 최소화와 공유 권한 세분화로 스테이징 자체를 어렵게 만들어야 한다.`,
+    severity: 'medium'
   },
 
   // 6. T1595 능동적 스캐닝
@@ -141,7 +185,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - 방화벽이 허용한 연결의 포트·프로토콜·원격지 정보를 상세히 기록하므로 다수 포트 접근 시도를 명확히 확인할 수 있다.
 - 동일 Source Address에서 짧은 시간 안에 다양한 포트로 연결되면 능동적 스캐닝 징후로 판단할 수 있다.`,
     situation: `Nmap, Masscan 등 스캐닝 도구를 사용하여 다수 포트에 빠르게 연결을 시도할 때 연속적으로 기록된다. SMB·RDP·HTTP 등 다양한 포트로 짧은 시간 안에 접근이 발생하면 외부 또는 내부에서 능동적 스캔이 수행된 것으로 판단할 수 있다.`,
-    improvement: `능동적 스캐닝을 차단하려면 불필요한 포트 노출을 최소화하고, 시스템 간 연결 가능한 서비스 범위를 제한하여 공격자가 여러 포트에 접근할 수 있는 표면 자체를 줄여야 한다. 동일 출발지에서 다수 포트로 단시간 연결이 발생하는 패턴을 네트워크 차원에서 탐지·차단하는 정책이 필요하다.`
+    improvement: `능동적 스캐닝을 차단하려면 불필요한 포트 노출을 최소화하고, 시스템 간 연결 가능한 서비스 범위를 제한하여 공격자가 여러 포트에 접근할 수 있는 표면 자체를 줄여야 한다. 동일 출발지에서 다수 포트로 단시간 연결이 발생하는 패턴을 네트워크 차원에서 탐지·차단하는 정책이 필요하다.`,
+    severity: 'low'
   },
 
   // 7. T1566 피싱
@@ -157,7 +202,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Outlook·Chrome·Word·Excel 등 정상 애플리케이션이 powershell.exe, cmd.exe, wscript.exe 등의 자식 프로세스를 생성하면 피싱 성공 가능성이 크다.
 - Parent Process Name과 CommandLine으로 스크립트 기반 드롭퍼·매크로 실행 여부를 확인할 수 있다.`,
     situation: `피해자가 악성 첨부파일(docm·js·zip·exe 등)을 실행하거나, 이메일/메신저/SNS에 포함된 악성 URL 클릭 후 스크립트 기반 드롭퍼(mshta·wscript·powershell 등)가 실행될 때 발생한다. 정상 프로그램이 비정상 자식 프로세스를 생성하면 피싱 성공 후 후속 침투로 이어질 가능성이 높다.`,
-    improvement: `피싱 공격을 막기 위해서는 사용자가 악성 첨부파일을 실행하거나 악성 링크를 열지 못하도록 애플리케이션 실행 경로와 스크립트 실행 체인을 통제해야 한다. 특히 Outlook, Word, Chrome 등이 PowerShell·cmd·wscript 등을 자식 프로세스로 생성하지 못하도록 제한하면 피싱 후속 공격의 상당 부분을 차단할 수 있다.`
+    improvement: `피싱 공격을 막기 위해서는 사용자가 악성 첨부파일을 실행하거나 악성 링크를 열지 못하도록 애플리케이션 실행 경로와 스크립트 실행 체인을 통제해야 한다. 특히 Outlook, Word, Chrome 등이 PowerShell·cmd·wscript 등을 자식 프로세스로 생성하지 못하도록 제한하면 피싱 후속 공격의 상당 부분을 차단할 수 있다.`,
+    severity: 'medium'
   },
 
   // 8. T1071 애플리케이션 계층 프로토콜 악용
@@ -171,7 +217,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Source Address, Destination Address, Destination Port, Protocol, Process Name`,
     rationale: `WFP가 네트워크 연결 허용 시 기록하는 이벤트로, 악성 프로세스가 외부 C2 서버와 통신할 때 가장 직접적으로 나타난다. 동일 프로세스가 짧은 시간 안에 여러 포트/외부 IP로 반복 연결하거나, 평소 연결하지 않는 목적지로 트래픽이 발생하면 초기 C2 통신·데이터 유출 시도로 판단할 수 있다.`,
     situation: `악성코드가 HTTP/HTTPS/DNS/SMTP 등 정상 프로토콜로 위장해 C2 서버와 초기 통신을 시도할 때 발생한다. 평소 사용하지 않는 도메인·IP로의 반복 연결이나 비정상 포트 조합이 나타나면 애플리케이션 계층 악용 가능성이 높다.`,
-    improvement: `정상적인 HTTPS/DNS/HTTP 트래픽과 악성 C2 트래픽을 구분하기 위해 프로세스 기반 네트워크 통제를 강화해야 한다. 내부 시스템이 평상시 통신하지 않는 외부 목적지·도메인·포트로 연결되는 행위를 최소화하고, 특정 애플리케이션·계정·업무 목적에 맞게 아웃바운드 트래픽을 제한해야 한다.`
+    improvement: `정상적인 HTTPS/DNS/HTTP 트래픽과 악성 C2 트래픽을 구분하기 위해 프로세스 기반 네트워크 통제를 강화해야 한다. 내부 시스템이 평상시 통신하지 않는 외부 목적지·도메인·포트로 연결되는 행위를 최소화하고, 특정 애플리케이션·계정·업무 목적에 맞게 아웃바운드 트래픽을 제한해야 한다.`,
+    severity: 'high'
   },
 
   // 9. T1041 C2 채널을 통한 유출
@@ -185,7 +232,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Source Address, Destination Address, Destination Port, Protocol, Bytes Sent/Bytes Received`,
     rationale: `악성 프로세스가 외부 서버로 비정상적인 양의 데이터를 전송할 때 반복적으로 나타난다. 동일 프로세스에서 특정 외부 IP/도메인으로 지속적인 연결이 발생하면 C2 통신·데이터 유출 채널 가능성을 의심할 수 있다.`,
     situation: `악성 프로세스가 외부 C2 서버로 계정정보, 키로깅 결과, 내부 문서 등의 데이터를 전송할 때 대량의 송신 트래픽이 발생하며 이 이벤트가 계속 기록된다. 평소 사용하지 않는 해외 IP로의 반복 업로드성 연결도 해당 상황에 포함된다.`,
-    improvement: `C2 기반 데이터 유출을 막기 위해서는 내부 시스템이 외부 서버로 대량 송신(Bytes Sent) 트래픽을 발생시키는 행위를 제한해야 한다. 특정 애플리케이션·계정만 외부로 데이터 전송을 허용하고, 비업무 애플리케이션의 업로드 자체를 차단해 C2 트래픽 악용을 어렵게 만들어야 한다.`
+    improvement: `C2 기반 데이터 유출을 막기 위해서는 내부 시스템이 외부 서버로 대량 송신(Bytes Sent) 트래픽을 발생시키는 행위를 제한해야 한다. 특정 애플리케이션·계정만 외부로 데이터 전송을 허용하고, 비업무 애플리케이션의 업로드 자체를 차단해 C2 트래픽 악용을 어렵게 만들어야 한다.`,
+    severity: 'high'
   },
 
   // 10. T1567 웹 서비스를 통한 유출
@@ -199,7 +247,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Source Address, Destination Address, Destination Port, Protocol, Process Name, Bytes Sent`,
     rationale: `프로세스가 외부 웹 서비스로 지속적 또는 대량 송신 트래픽을 허용받을 때 기록된다. 정상 프로그램(브라우저·업무용 클라이언트 등)이 짧은 시간 내 특정 웹스토리지 도메인으로 반복적·대용량 트래픽을 발생시키면 웹 업로드 기반 데이터 유출 가능성을 의심할 수 있다.`,
     situation: `내부 시스템에서 탈취한 계정 정보·키로깅 결과·스크린샷·내부 문서 등을 웹 스토리지/클라우드 서비스로 업로드하는 과정에서 발생한다. 파일 분할 전송, 압축 후 업로드, 주기적 반복 전송 등 패턴이 동반된다.`,
-    improvement: `웹 기반 데이터 유출은 정상적인 HTTPS 트래픽 속에 데이터를 숨겨 전송하므로, “어떤 프로세스가 어떤 웹 서비스로 데이터를 보낼 수 있는지”를 제한하는 것이 핵심이다. 평소 사용하지 않는 웹 저장소·파일 호스팅 서비스로의 업로드를 차단하고, 비업무 애플리케이션의 외부 웹 서비스 접근을 통제해야 한다.`
+    improvement: `웹 기반 데이터 유출은 정상적인 HTTPS 트래픽 속에 데이터를 숨겨 전송하므로, “어떤 프로세스가 어떤 웹 서비스로 데이터를 보낼 수 있는지”를 제한하는 것이 핵심이다. 평소 사용하지 않는 웹 저장소·파일 호스팅 서비스로의 업로드를 차단하고, 비업무 애플리케이션의 외부 웹 서비스 접근을 통제해야 한다.`,
+    severity: 'high'
   },
 
   // 11. T1486 데이터 암호화(랜섬웨어)
@@ -208,7 +257,7 @@ const THREAT_GUIDES: ThreatGuide[] = [
     category: '영향(랜섬웨어)',
     mitreId: 'T1486',
     threatType: '영향을 주기 위한 데이터 암호화/랜섬',
-    description: `공격자는 대상 시스템이나 네트워크 내 다수 시스템의 데이터를 암호화하여 시스템 및 네트워크 리소스 가용성을 차단할 수 있다. 로컬 및 원격 드라이브의 데이터 암호화를 통해 피해자가 데이터에 접근하지 못하게 만든 뒤 금전적인 보상을 요구하거나, 키를 제공하지 않아 영구적인 데이터 손실을 유도하기도 한다.`,
+    description: `공격자는 대상 시스템이나 네트워크 내 다수 시스템의 데이터를 암호화하여 시스템 및 네트워크 리소스 가용성을 차단할 수 있다. 로컬 및 원격 드라이브의 데이터를 암호화하여 피해자가 데이터에 접근하지 못하게 만든 뒤 금전적인 보상을 요구하거나, 키를 제공하지 않아 영구적인 데이터 손실을 유도하기도 한다.`,
     eventId: '4688',
     logFields: `New Process Name, Process Command Line`,
     rationale: `프로세스 생성 로그로, 랜섬웨어나 암호화 도구 실행 흔적을 포착할 수 있다.
@@ -216,7 +265,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Command Line에 .locked, .encrypted, ransom 문자열 또는 특이 압축 옵션이 보이면 대량 암호화 시작을 의심할 수 있다.
 - 4688 후 4663 급증 패턴을 함께 보면 랜섬웨어 암호화 체인을 확인할 수 있다.`,
     situation: `새로운 프로세스가 생성될 때마다 발생하며, certutil.exe, bitsadmin.exe, makecab.exe, reg.exe 등 LOLBin 악용이나 랜섬웨어 실행 시 핵심 증거로 기록된다.`,
-    improvement: `랜섬웨어 기반 암호화를 방지하기 위해서는 파일 시스템에 대한 대량 읽기·쓰기와 특정 확장자 생성 패턴을 유발하는 악성 프로세스 실행 자체를 차단해야 한다. 정상 프로그램 또는 LOLBins를 통한 암호화 프로세스 실행을 어렵게 만들고, 중요 데이터 접근 권한을 최소화해 암호화 확산을 막아야 한다.`
+    improvement: `랜섬웨어 기반 암호화를 방지하기 위해서는 파일 시스템에 대한 대량 읽기·쓰기와 특정 확장자 생성 패턴을 유발하는 악성 프로세스 실행 자체를 차단해야 한다. 정상 프로그램 또는 LOLBins를 통한 암호화 프로세스 실행을 어렵게 만들고, 중요 데이터 접근 권한을 최소화해 암호화 확산을 막아야 한다.`,
+    severity: 'high'
   },
 
   // 12. T1190 공개서비스 익스플로잇
@@ -230,7 +280,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `New Process Name, Creator Process Name, Process Command Line, Mandatory Level`,
     rationale: `웹 서비스 프로세스(w3wp.exe, sqlservr.exe 등)가 자식 프로세스로 cmd.exe·powershell.exe를 생성하는지를 확인할 수 있는 핵심 로그이다. 정상 환경에서 웹 서버가 OS 명령 인터프리터를 실행하는 일은 거의 없으므로, Parent가 웹 서버인데 Command Line에 외부 다운로드(iwr/wget), PowerShell 인코딩(-enc) 등이 보이면 취약점 악용에 의한 RCE 가능성이 높다.`,
     situation: `Windows 웹 서비스나 애플리케이션 취약점 악용으로 웹쉘 업로드, xp_cmdshell 실행 등이 일어날 때 서비스 프로세스가 cmd.exe·powershell.exe·rundll32.exe를 비정상적으로 생성하며 이 이벤트가 발생한다.`,
-    improvement: `공개 서비스 취약점 악용을 차단하려면 인터넷에 노출된 서비스의 공격 표면을 최소화하고 최신 패치를 유지해야 한다. 서비스 계정 권한과 실행 경로를 제한해 RCE 후속 행동을 차단하고, 불필요한 웹 기능·핸들러·모듈을 제거해 외부 요청이 OS 명령 실행으로 이어지는 구조를 제거해야 한다.`
+    improvement: `공개 서비스 취약점 악용을 차단하려면 인터넷에 노출된 서비스의 공격 표면을 최소화하고 최신 패치를 유지해야 한다. 서비스 계정 권한과 실행 경로를 제한해 RCE 후속 행동을 차단하고, 불필요한 웹 기능·핸들러·모듈을 제거해 외부 요청이 OS 명령 실행으로 이어지는 구조를 제거해야 한다.`,
+    severity: 'high'
   },
 
   // 13. T1203/T1210 특정 취약점 익스플로잇
@@ -244,7 +295,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Creator Process Name, New Process Name, Process Command Line, Mandatory Level`,
     rationale: `취약한 클라이언트 애플리케이션(브라우저, PDF/Office 뷰어 등)이 예상되지 않은 명령 인터프리터(cmd.exe, powershell.exe) 또는 rundll32.exe를 새로 생성하는지를 확인할 수 있는 핵심 로그이다. 정상적인 문서 열기나 웹 렌더링 과정에서는 이런 체인이 거의 발생하지 않으므로, 이 경우 취약점 악용을 통한 RCE 가능성이 크다.`,
     situation: `사용자가 웹페이지나 Office/PDF 문서를 열었을 뿐인데 브라우저나 문서 프로그램이 cmd.exe, powershell.exe, rundll32.exe 등을 비정상적으로 호출하는 경우에 발생한다. 악성 문서가 취약한 매크로 엔진 또는 OLE 개체를 통해 외부 DLL을 로드·실행할 때도 동일한 패턴의 4688 이벤트가 나타난다.`,
-    improvement: `브라우저·PDF 뷰어·Office 등 클라이언트 애플리케이션은 취약점 패치를 신속히 적용하고, 불필요한 플러그인(ActiveX·스크립팅 엔진 등)을 제거해 공격 표면을 줄여야 한다. 또한 이들 프로그램이 cmd.exe·powershell.exe·rundll32.exe를 직접 생성하지 못하도록 실행 체인을 통제하면, 취약점이 트리거되더라도 후속 페이로드 실행을 어렵게 만들 수 있다.`
+    improvement: `브라우저·PDF 뷰어·Office 등 클라이언트 애플리케이션은 취약점 패치를 신속히 적용하고, 불필요한 플러그인(ActiveX·스크립팅 엔진 등)을 제거해 공격 표면을 줄여야 한다. 또한 이들 프로그램이 cmd.exe·powershell.exe·rundll32.exe를 직접 생성하지 못하도록 실행 체인을 통제하면, 취약점이 트리거되더라도 후속 페이로드 실행을 어렵게 만들 수 있다.`,
+    severity: 'high'
   },
 
   // 14. T1547 부팅/로그온 자동 실행
@@ -258,7 +310,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Service Name, Service File Name, Start Type, Service Account`,
     rationale: `새 서비스가 설치될 때마다 기록되며, 공격자가 지속성을 확보하기 위해 ‘서비스 등록’을 수행할 때 가장 직접적으로 드러나는 핵심 로그이다. 비정상 실행 파일이 서비스로 등록되거나, 서비스 경로가 Temp·AppData 등 비정상 디렉터리일 경우 악성 서비스 설치 가능성이 높다.`,
     situation: `공격자가 악성 코드를 지속적으로 실행하기 위해 sc create, PowerShell New-Service 등으로 서비스를 등록할 때 발생한다. 원격 침투 후 LocalSystem 권한 서비스 설치나 랜섬웨어가 부팅 시 자동 실행되도록 자기 자신을 서비스로 등록할 때도 동일하다.`,
-    improvement: `서비스 기반 지속성 공격을 막기 위해서는 부팅·로그온 시 자동 실행되는 영역(서비스, 스케줄러, 레지스트리 Run 키 등)에 임의 실행 파일이 추가되지 않도록 실행·쓰기 권한을 최소화해야 한다. 자동 실행 경로의 파일 무결성과 실행 체인을 엄격히 통제하고, LocalSystem 서비스 권한을 최소화해야 한다.`
+    improvement: `서비스 기반 지속성 공격을 막기 위해서는 부팅·로그온 시 자동 실행되는 영역(서비스, 스케줄러, 레지스트리 Run 키 등)에 임의 실행 파일이 추가되지 않도록 실행·쓰기 권한을 최소화해야 한다. 자동 실행 경로의 파일 무결성과 실행 체인을 엄격히 통제하고, LocalSystem 서비스 권한을 최소화해야 한다.`,
+    severity: 'medium'
   },
 
   // 15. T1068 권한 상승 익스플로잇
@@ -272,7 +325,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Account Name, Account Domain, Logon ID, Privileges, Logon Process Name`,
     rationale: `사용자나 프로세스에 고위험 Privilege가 부여될 때 발생하는 이벤트로, 권한 상승 시도의 핵심 지표다. 일반 사용자 계정에서 예상되지 않는 SeDebugPrivilege, SeImpersonatePrivilege 등이 활성화되면 이상 징후로 판단할 수 있다.`,
     situation: `사용자 로그인 직후 또는 프로세스가 SYSTEM 권한으로 동작하는 시점에 특별 권한이 부여될 때 발생한다. 권한 상승 익스플로잇 실행 후 쉘이나 임시 계정에 SYSTEM 권한이 부여될 때도 동일한 이벤트가 기록된다.`,
-    improvement: `OS·드라이버·서비스에 최신 보안 패치를 적용해 LPE(Local Privilege Escalation) 취약점을 제거하고, 일반 사용자 계정이 고위험 Privilege를 획득하지 못하도록 권한 모델을 최소화해야 한다. 또한 취약한 서명 드라이버를 로드하지 못하도록 드라이버 무결성 보호를 강화해야 한다.`
+    improvement: `OS·드라이버·서비스에 최신 보안 패치를 적용해 LPE(Local Privilege Escalation) 취약점을 제거하고, 일반 사용자 계정이 고위험 Privilege를 획득하지 못하도록 권한 모델을 최소화해야 한다. 또한 취약한 서명 드라이버를 로드하지 못하도록 드라이버 무결성 보호를 강화해야 한다.`,
+    severity: 'high'
   },
 
   // 16. T1566.001 스피어피싱(첨부)
@@ -286,7 +340,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `New Process Name, Creator Process Name, Process Command Line, Mandatory Level`,
     rationale: `사용자가 이메일 첨부파일을 열었을 때 생성되는 프로세스를 통해 스피어피싱 첨부 실행 여부를 파악할 수 있다. Outlook/Chrome/Winword/Excel 등을 부모로 cmd.exe, powershell.exe, wscript.exe, mshta.exe, rundll32.exe 등이 생성되면 의심도가 매우 높다.`,
     situation: `스피어피싱 이메일에서 Word/Excel/PDF/ZIP 등 첨부파일을 열었을 때 문서 내부 매크로·스크립트가 자동 실행되거나 보안 경고를 우회해 악성 코드가 구동되면 해당 이벤트가 발생한다.`,
-    improvement: `스피어피싱 기반 침해를 막으려면 문서·첨부파일·링크가 임의로 시스템 명령(cmd, powershell, wscript 등)을 실행하지 못하도록 실행 체인을 통제해야 한다. 자동 실행 기능(OLE, DDE, 매크로, Active Content)을 최소화하고, 첨부파일 실행 및 다운로드 경로를 제한해야 한다.`
+    improvement: `스피어피싱 기반 침해를 막으려면 문서·첨부파일·링크가 임의로 시스템 명령(cmd, powershell, wscript 등)을 실행하지 못하도록 실행 체인을 통제해야 한다. 자동 실행 기능(OLE, DDE, 매크로, Active Content)을 최소화하고, 첨부파일 실행 및 다운로드 경로를 제한해야 한다.`,
+    severity: 'medium'
   },
 
   // 17. T1204 사용자 실행
@@ -300,7 +355,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Account Name, Logon ID, Creator Process Name, New Process Name, Process Command Line, Mandatory Level`,
     rationale: `사용자가 직접 악성 파일·링크를 실행할 때 생성되는 신규 프로세스 로그로, 사용자 실행 기반 초기 침해 여부를 판단하는 핵심 근거이다. 정상일 때와 달리 비정상적으로 powershell.exe, cmd.exe, wscript.exe, mshta.exe, rundll32.exe 등이 생성되는 패턴에 주목해야 한다.`,
     situation: `사용자가 피싱/스피어피싱 메시지에서 문서, 실행파일, ZIP 등을 열람하면서 매크로나 스크립트가 자동 실행되거나, 바로가기(.lnk), 위장된 실행파일을 직접 실행할 때 해당 이벤트가 발생한다.`,
-    improvement: `사용자 실행 기반 공격을 막기 위해서는 사용자가 실행하는 파일·링크·스크립트가 임의로 시스템 명령을 호출하지 못하도록 실행 흐름을 통제해야 한다. 외부에서 내려받은 파일 실행을 제한하고, 자동 실행 기능을 최소화하며, 사용자가 관리자 권한을 갖지 않도록 운영해야 한다.`
+    improvement: `사용자 실행 기반 공격을 막기 위해서는 사용자가 실행하는 파일·링크·스크립트가 임의로 시스템 명령을 호출하지 못하도록 실행 흐름을 통제해야 한다. 외부에서 내려받은 파일 실행을 제한하고, 자동 실행 기능을 최소화하며, 사용자가 관리자 권한을 갖지 않도록 운영해야 한다.`,
+    severity: 'medium'
   },
 
   // 18. T1059 명령 및 스크립팅 인터프리터
@@ -317,7 +373,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Command Line에 EncodedCommand, -w hidden, IEX (New-Object Net.WebClient).DownloadString(...) 등이 보이면 의심스러운 PowerShell 다운로드 실행을 확인할 수 있다.
 - Parent Process Name이 explorer.exe 또는 Office(winword.exe 등)인데 powershell.exe를 호출하면 비정상 인터프리터 실행으로 본다.`,
     situation: `powershell.exe -w hidden -enc, cmd.exe /c powershell, cscript.exe //B malicious.vbs 등의 명령이 실행될 때 생성된다. 정상 관리 작업에서도 발생하지만, 비정상 인코딩/옵션/부모 프로세스 조합일 때 악성 스크립트 실행 탐지에 중요하다.`,
-    improvement: `PowerShell·cmd·wscript·cscript 등 스크립트 실행 엔진이 임의 실행되거나 자동 호출되지 않도록 실행 체인을 제한해야 한다. 인코딩된 명령, 숨김 실행, 다운로드 실행 등을 통해 악성 페이로드가 실행되지 않도록 스크립트 실행 정책과 다운로드 기능을 제한해야 한다.`
+    improvement: `PowerShell·cmd·wscript·cscript 등 스크립트 실행 엔진이 임의 실행되거나 자동 호출되지 않도록 실행 체인을 제한해야 한다. 인코딩된 명령, 숨김 실행, 다운로드 실행 등을 통해 악성 페이로드가 실행되지 않도록 스크립트 실행 정책과 다운로드 기능을 제한해야 한다.`,
+    severity: 'low'
   },
 
   // 19. T1552 보안되지 않은 자격 증명
@@ -333,7 +390,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Object Name이 C:\\Windows\\System32\\config\\SAM/SYSTEM 또는 HKLM\\SAM이면 자격 증명 저장소 접근 가능성을 의심할 수 있다.
 - Accesses=ReadData 상태에서 reg.exe/cmd.exe 등이 SAM 파일에 연속 접근하면 자격 증명 열거를 의심할 수 있다.`,
     situation: `파일/레지스트리 객체에 대한 Handle + ReadData 접근 시 발생하며, 특히 C:\\Windows\\System32\\config\\SAM, SYSTEM 파일이나 HKLM\\SAM 키 접근에서 다수 생성된다. 정상 백업 외 동일 Object에 대한 4663 급증은 내부자 위협 신호다.`,
-    improvement: `SAM·SYSTEM·SECURITY 등 OS 자격 증명 저장소와 애플리케이션 비밀번호 저장 위치에 대해 최소 권한을 유지하고, 일반 사용자가 읽기 작업을 수행하지 못하도록 통제해야 한다. 평문 자격 증명, 스크립트 하드코딩 패스워드, Config 파일 기반 비밀번호 저장 등을 제거해 파일 탐색만으로 민감 정보를 얻지 못하도록 해야 한다.`
+    improvement: `SAM·SYSTEM·SECURITY 등 OS 자격 증명 저장소와 애플리케이션 비밀번호 저장 위치에 대해 최소 권한을 유지하고, 일반 사용자가 읽기 작업을 수행하지 못하도록 통제해야 한다. 평문 자격 증명, 스크립트 하드코딩 패스워드, Config 파일 기반 비밀번호 저장 등을 제거해 파일 탐색만으로 민감 정보를 얻지 못하도록 해야 한다.`,
+    severity: 'low'
   },
 
   // 20. T1562 방어력 약화 – 이벤트 로깅 비활성화
@@ -347,7 +405,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Event ID, Provider, Level, Task, Keywords, Time Created, Computer Name, EventData`,
     rationale: `Event Logging Service가 중지될 때 1100 이벤트가 생성되어 로그 서비스 비활성화 행위를 기록한다. 1100 이후 로그 수집량 급감 패턴이 나타나면 이벤트 로깅 완전 비활성화 가능성을 의심할 수 있다.`,
     situation: `Windows Event Log 서비스가 net stop eventlog, sc stop eventlog, 레지스트리 변경 후 재부팅 등으로 중지될 때 생성된다. 정상 시스템 종료 시에도 발생하지만, 비정상 시간대/비관리자 계정에서의 1100은 방어 무력화 탐지 시 핵심 이벤트이다.`,
-    improvement: `Event Log 서비스가 임의 중지되지 않도록 서비스 중지·수정 권한을 엄격히 제한해야 한다. 권한 상승 후 eventlog 서비스를 중단해 탐지를 무력화하는 패턴을 막기 위해 서비스 설정과 레지스트리 값의 무결성을 보호하고, 보안 구성 변경을 수행할 수 있는 계정을 최소화해야 한다.`
+    improvement: `Event Log 서비스가 임의 중지되지 않도록 서비스 중지·수정 권한을 엄격히 제한해야 한다. 권한 상승 후 eventlog 서비스를 중단해 탐지를 무력화하는 패턴을 막기 위해 서비스 설정과 레지스트리 값의 무결성을 보호하고, 보안 구성 변경을 수행할 수 있는 계정을 최소화해야 한다.`,
+    severity: 'high'
   },
 
   // 21. T1105 Ingress Tool Transfer
@@ -362,7 +421,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     rationale: `Ingress Tool Transfer 위협을 직접적으로 포착할 수 있는 이벤트이다.
 - Process Name·Command Line에서 System32 내장 도구(certutil.exe, bitsadmin.exe 등)가 비정상 URL(외부 C2 서버)로 연결되면 악성 도구 다운로드 가능성을 의심할 수 있다.`,
     situation: `새로운 프로세스가 생성될 때마다 발생하며, certutil.exe, bitsadmin.exe, powershell.exe 등 내장 도구로 외부 URL에서 파일을 다운로드하는 명령 실행 시 기록된다.`,
-    improvement: `Ingress Tool Transfer를 막기 위해서는 외부에서 내부로 파일이 다운로드되는 경로를 최소화하고, certutil·bitsadmin·PowerShell iwr/wget 등 기본 내장 다운로드 기능을 통한 도구 반입을 통제해야 한다. 임시 폴더·사용자 프로필·AppData 등에 임의 파일이 저장되지 않도록 파일 시스템 권한을 강화해야 한다.`
+    improvement: `Ingress Tool Transfer를 막기 위해서는 외부에서 내부로 파일이 다운로드되는 경로를 최소화하고, certutil·bitsadmin·PowerShell iwr/wget 등 기본 내장 다운로드 기능을 통한 도구 반입을 통제해야 한다. 임시 폴더·사용자 프로필·AppData 등에 임의 파일이 저장되지 않도록 파일 시스템 권한을 강화해야 한다.`,
+    severity: 'medium'
   },
 
   // 22. T1560 Archive Collected Data
@@ -377,7 +437,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     rationale: `makecab.exe, rar.exe, 7z.exe 등 압축 유틸리티 실행 시 CommandLine에서 압축/암호화 패턴을 탐지하는 것이 MITRE에서 권고하는 전략이다.
 - Process Name·Command Line에서 makecab.exe/rar.exe/7z.exe와 압축 옵션(-m, -ep1, a 등)이 보이면 데이터 아카이빙 가능성을 의심할 수 있다.`,
     situation: `새로운 프로세스가 생성될 때마다 발생하며, makecab.exe, rar.exe, 7z.exe, winrar.exe 등이 데이터를 압축하거나 암호화할 때 생성된다.`,
-    improvement: `데이터 압축·암호화 기반 유출 준비를 막으려면 7z, rar, makecab 등의 임의 압축 도구 실행을 제한하고, TEMP·AppData 등 비정상 위치에서의 아카이빙 작업을 불가능하게 만들어야 한다. 중요 데이터 위치의 읽기·복사·패킹을 제한해 대량 파일을 하나로 묶는 동작 자체를 어렵게 해야 한다.`
+    improvement: `데이터 압축·암호화 기반 유출 준비를 막으려면 7z, rar, makecab 등의 임의 압축 도구 실행을 제한하고, TEMP·AppData 등 비정상 위치에서의 아카이빙 작업을 불가능하게 만들어야 한다. 중요 데이터 위치의 읽기·복사·패킹을 제한해 대량 파일을 하나로 묶는 동작 자체를 어렵게 해야 한다.`,
+    severity: 'low'
   },
 
   // 23. T1609 컨테이너 관리 명령
@@ -393,7 +454,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - New Process Name이 docker.exe, kubectl.exe이면 컨테이너 관리 도구 실행으로 본다.
 - Account Name이 비관리자 계정인데 Docker/Kubernetes 관리 명령이 실행되면 비인가 컨테이너 접근 가능성을 의심할 수 있다.`,
     situation: `Windows Docker Desktop 또는 Kubernetes Windows 노드에서 docker exec, kubectl exec 등을 실행할 때 생성된다. 정상 개발자 작업에서도 발생하지만, 비관리자 계정·비정상 시간대 패턴은 컨테이너 탈출 및 명령 실행 탐지에 중요하다.`,
-    improvement: `docker.exe·kubectl.exe 같은 컨테이너 관리 도구를 실행할 수 있는 계정을 제한하고, 컨테이너 관리 인터페이스(Docker Daemon, Kubernetes API)에 대한 접근 통제를 강화해야 한다. 일반 사용자나 비인가 계정이 컨테이너 관리 명령을 실행하지 못하도록 RBAC와 인증·토큰 관리 정책을 강화해야 한다.`
+    improvement: `docker.exe·kubectl.exe 같은 컨테이너 관리 도구를 실행할 수 있는 계정을 제한하고, 컨테이너 관리 인터페이스(Docker Daemon, Kubernetes API)에 대한 접근 통제를 강화해야 한다. 일반 사용자나 비인가 계정이 컨테이너 관리 명령을 실행하지 못하도록 RBAC와 인증·토큰 관리 정책을 강화해야 한다.`,
+    severity: 'medium'
   },
 
   // 24. T1490 시스템 복구 차단
@@ -408,7 +470,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     rationale: `vssadmin.exe, bcdedit.exe, wbadmin.exe 등이 Volume Shadow Copy 삭제, 백업 카탈로그 삭제, 부팅 복구 비활성화 명령을 수행할 때 4688 이벤트가 생성된다.
 - Command Line에 "vssadmin delete shadows /all /quiet", "bcdedit /set {default} recoveryenabled No" 등이 보이면 복구 차단 가능성을 의심할 수 있다.`,
     situation: `vssadmin.exe, bcdedit.exe, wbadmin.exe, wmic.exe 등이 볼륨 섀도 복사본 삭제, 백업 카탈로그 삭제, 부팅 복구 비활성화를 수행할 때 해당 이벤트가 기록된다.`,
-    improvement: `시스템 복구 차단을 막기 위해서는 Volume Shadow Copy, 복구 파티션, 백업 카탈로그 등 자체 복구 기능에 대한 무단 변경을 금지해야 한다. vssadmin, bcdedit, wbadmin 같은 도구 사용을 엄격히 제한하고, 일반 사용자나 서비스 계정이 복구 설정을 변경할 수 없도록 권한 구조를 설계해야 한다.`
+    improvement: `시스템 복구 차단을 막기 위해서는 Volume Shadow Copy, 복구 파티션, 백업 카탈로그 등 자체 복구 기능에 대한 무단 변경을 금지해야 한다. vssadmin, bcdedit, wbadmin 같은 도구 사용을 엄격히 제한하고, 일반 사용자나 서비스 계정이 복구 설정을 변경할 수 없도록 권한 구조를 설계해야 한다.`,
+    severity: 'high'
   },
 
   // 25. T1565 데이터 조작
@@ -424,7 +487,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Object Name이 로그파일(.log), DB(.mdb, .sqlite), ntds.dit 등일 때 ACL 변경은 고위험 신호이다.
 - Original/New Security Descriptor 비교로 Everyone/Guests 권한 부여 등 비인가 권한 조작을 확인할 수 있다.`,
     situation: `파일/레지스트리 객체의 ACL/Permissions 변경 시 생성된다. 공격자가 데이터 무결성 공격을 위해 민감 파일·시스템 파일 권한을 변경할 때 발생한다.`,
-    improvement: `로그파일·DB·시스템 파일 등 무결성이 중요한 객체 권한을 최소 권한 원칙으로 유지하고, 비인가 계정이 ACL을 변경할 수 없도록 해야 한다. 객체 보안 설정 변경 자체를 차단하고, 서비스·애플리케이션 계정도 필요한 권한만 갖도록 제한해야 한다.`
+    improvement: `로그파일·DB·시스템 파일 등 무결성이 중요한 객체 권한을 최소 권한 원칙으로 유지하고, 비인가 계정이 ACL을 변경할 수 없도록 해야 한다. 객체 보안 설정 변경 자체를 차단하고, 서비스·애플리케이션 계정도 필요한 권한만 갖도록 제한해야 한다.`,
+    severity: 'high'
   },
 
   // 26. T1078 유효 계정(퇴직자 위협)
@@ -441,7 +505,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Logon Type 3(Network), 10(RemoteInteractive)에서 퇴직자 계정 로그온이 보이면 원격 접근 남용을 의심할 수 있다.
 - Source Network Address가 회사 외부 IP 또는 미등록 위치면 외부에서 계정 악용을 의심한다.`,
     situation: `퇴직자 계정이 VPN/RDP/도메인 로그온으로 재접속할 때 발생할 수 있다. 정상 사용자 로그온에서도 발생하지만, 퇴직자 계정·비정상 시간대·비정상 위치 조합이면 내부자 위협 탐지 시 중요하다.`,
-    improvement: `퇴직자 계정 악용을 막기 위해서는 계정 라이프사이클 관리가 필수적이다. 퇴직·이동·휴직 등 상태 변화 발생 시 계정 비활성화 또는 삭제를 즉시 수행해야 한다. 외부 접속 가능한 모든 시스템에 대해 MFA를 적용하고, 계정 사용 범위·시간·접속 위치를 제한해야 한다.`
+    improvement: `퇴직자 계정 악용을 막기 위해서는 계정 라이프사이클 관리가 필수적이다. 퇴직·이동·휴직 등 상태 변화 발생 시 계정 비활성화 또는 삭제를 즉시 수행해야 한다. 외부 접속 가능한 모든 시스템에 대해 MFA를 적용하고, 계정 사용 범위·시간·접속 위치를 제한해야 한다.`,
+    severity: 'medium'
   },
 
   // 27. T1098 계정 조작
@@ -457,7 +522,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Target Account가 관리자/서비스 계정이고 Changed Attributes에 "Password not required", "Account never expires"가 있으면 계정 조작 가능성이 크다.
 - Subject > Account Name이 비관리자 계정인데 고권한 계정 변경을 수행하면 비인가 계정 조작으로 본다.`,
     situation: `net user, PowerShell Set-ADUser, AD 사용자 관리 도구 등으로 계정 속성을 변경할 때 생성된다. 정상 HR/관리 작업에서도 발생하지만, 비정상 시간대·비관리자 계정 패턴은 악성 계정 조작 신호다.`,
-    improvement: `관리자·서비스 계정 등 고권한 계정 속성 변경을 일반 사용자가 수행할 수 없도록 권한을 강하게 제한해야 한다. 계정 보안 속성 변경 자체를 엄격히 통제하고, 패스워드 정책·만료 정책·로그온 제약 조건을 표준화해야 한다.`
+    improvement: `관리자·서비스 계정 등 고권한 계정 속성 변경을 일반 사용자가 수행할 수 없도록 권한을 강하게 제한해야 한다. 계정 보안 속성 변경 자체를 엄격히 통제하고, 패스워드 정책·만료 정책·로그온 제약 조건을 표준화해야 한다.`,
+    severity: 'high'
   },
 
   // 28. T1136 계정 생성
@@ -473,7 +539,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - New Account > Account Name이 "tempuser", "backup", "admin2" 등 의심스러운 이름이면 악성 계정 생성 가능성을 의심한다.
 - Attributes > New UAC Value에서 0x15(비활성화+PasswordNotRequired) 등 비정상 속성이 있으면 백도어 계정 설정 가능성이 크다.`,
     situation: `net user newuser password /add, PowerShell New-LocalUser 등으로 계정을 생성할 때 발생한다.`,
-    improvement: `악성 계정 생성을 막기 위해서는 신규 계정 생성 권한을 관리자·전담 운영 계정으로만 제한하고, 일반 사용자나 서비스 계정이 계정을 추가할 수 없도록 구조를 설계해야 한다. 또한 계정 속성 변경 자체를 강하게 통제해 “PasswordNotRequired”, “Account never expires” 같은 약화된 속성이 설정되지 못하도록 해야 한다.`
+    improvement: `악성 계정 생성을 막기 위해서는 신규 계정 생성 권한을 관리자·전담 운영 계정으로만 제한하고, 일반 사용자나 서비스 계정이 계정을 추가할 수 없도록 구조를 설계해야 한다. 또한 계정 속성 변경 자체를 강하게 통제해 “PasswordNotRequired”, “Account never expires” 같은 약화된 속성이 설정되지 못하도록 해야 한다.`,
+    severity: 'high'
   },
 
   // 29. T1070 로그 조작(지표 제거)
@@ -490,7 +557,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Log File (Cleared)에 "Security"가 명시되면 보안 흔적 삭제를 의미한다.
 - Process Information에서 wevtutil.exe 또는 powershell.exe가 보이면 명령줄 기반 로그 클리어로 본다.`,
     situation: `Security 이벤트 로그가 wevtutil cl security, PowerShell Remove-EventLog, Event Viewer GUI를 통해 클리어될 때 생성된다. 정상 시스템 관리 작업에서는 거의 발생하지 않으며, 지표 제거 탐지 시 핵심 이벤트이다.`,
-    improvement: `로그 삭제는 공격자가 자신의 활동 흔적을 숨기기 위해 수행하는 대표적 지표 제거 기법이므로, 보안·시스템 로그에 대한 삭제 및 변경 권한을 철저히 제한해야 한다. wevtutil·PowerShell 기반 이벤트 클리어 사용을 통제하고, 일반 사용자나 비인가 계정이 로그 파일을 초기화하지 못하도록 권한 구조를 강화해야 한다.`
+    improvement: `로그 삭제는 공격자가 자신의 활동 흔적을 숨기기 위해 수행하는 대표적 지표 제거 기법이므로, 보안·시스템 로그에 대한 삭제 및 변경 권한을 철저히 제한해야 한다. wevtutil·PowerShell 기반 이벤트 클리어 사용을 통제하고, 일반 사용자나 비인가 계정이 로그 파일을 초기화하지 못하도록 권한 구조를 강화해야 한다.`,
+    severity: 'high'
   },
 
   // 30. T1053 예약 작업
@@ -506,7 +574,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Task Name이 "Updater", "WindowsUpdate", "SVCHOST" 등 위장된 이름이면 악성 예약 작업 생성 가능성을 의심할 수 있다.
 - Task Content에서 악성 페이로드 경로나 명령이 등록되어 있으면 서비스 악용 행위를 의심할 수 있다.`,
     situation: `schtasks /create, PowerShell New-ScheduledTask, Task Scheduler GUI 등을 통해 새 예약 작업을 만들 때 발생한다.`,
-    improvement: `예약 작업 악용을 막으려면 schtasks·PowerShell·Task Scheduler를 통해 실행 파일이나 스크립트가 임의로 등록되지 못하도록 작업 생성 권한을 최소화해야 한다. 자동 실행 경로와 실행 계정 권한을 제한하고, 허용된 작업 목록만 운영하도록 관리 절차를 강화해야 한다.`
+    improvement: `예약 작업 악용을 막으려면 schtasks·PowerShell·Task Scheduler를 통해 실행 파일이나 스크립트가 임의로 등록되지 못하도록 작업 생성 권한을 최소화해야 한다. 자동 실행 경로와 실행 계정 권한을 제한하고, 허용된 작업 목록만 운영하도록 관리 절차를 강화해야 한다.`,
+    severity: 'medium'
   },
 
   // 31. T1543 시스템 프로세스 생성·수정
@@ -520,7 +589,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
     logFields: `Service Name, Service File Name, Service Type, Start Type, Service Account`,
     rationale: `새 서비스가 시스템에 설치될 때 반드시 기록되는 로그이다. binPath에 비정상 경로(C:\\Users\\Public, Temp, AppData 등)나 의심 실행 파일이 포함되면 악성 서비스 생성 정황으로 본다.`,
     situation: `원격 침투 이후 sc.exe, PowerShell(New-Service) 등으로 악성 exe를 서비스로 등록하는 경우 발생한다. 정상 서비스 이름으로 위장한 악성 서비스 등록이나 재부팅 후 자동 실행을 위한 지속성 확보 과정에서도 동일하다.`,
-    improvement: `서비스 생성·수정 권한을 엄격히 제한하고, 서비스가 실행하는 바이너리 경로와 무결성을 보호해야 한다. 서비스 등록 경로나 실행 파일 배치 경로를 통제하면 지속성을 확보하기 어려워진다.`
+    improvement: `서비스 생성·수정 권한을 엄격히 제한하고, 서비스가 실행하는 바이너리 경로와 무결성을 보호해야 한다. 서비스 등록 경로나 실행 파일 배치 경로를 통제하면 지속성을 확보하기 어려워진다.`,
+    severity: 'high'
   },
 
   // 32. T1052 USB/외장매체 기반 유출
@@ -536,7 +606,8 @@ const THREAT_GUIDES: ThreatGuide[] = [
 - Task Category가 "Removable Storage Device"이면 USB/외장매체 접근을 의미한다.
 - Object Name이 E:, F:\\ 등 USB 드라이브이고 대량 .docx/.pdf 읽기/쓰기가 확인되면 데이터 복사 유출 가능성을 의심할 수 있다.`,
     situation: `USB/외장매체에 대한 파일 읽기/쓰기 접근 시 "Task Category: Removable Storage Device"로 생성된다. 정상 파일 복사에서도 발생하지만, 대량·민감 파일 접근 패턴은 내부자 데이터 유출 탐지에 중요하다.`,
-    improvement: `USB·외장매체 기반 유출을 막으려면 물리적 저장장치 사용 자체를 엄격히 제한하거나, 승인된 장치만 사용 가능하도록 통제해야 한다. 민감 데이터에 대한 읽기·복사 권한을 최소화하고 외장매체로의 대량 파일 복사가 불가능한 구조를 유지해야 한다.`
+    improvement: `USB·외장매체 기반 유출을 막으려면 물리적 저장장치 사용 자체를 엄격히 제한하거나, 승인된 장치만 사용 가능하도록 통제해야 한다. 민감 데이터에 대한 읽기·복사 권한을 최소화하고 외장매체로의 대량 파일 복사가 불가능한 구조를 유지해야 한다.`,
+    severity: 'medium'
   }
 ]
 
@@ -731,7 +802,7 @@ const ThreatReportPage: React.FC = () => {
 
       setStoredResult(stored)
 
-      // 🔥 여기서 DiagnosisEvaluation.tsx에서 수집한 시나리오/이벤트 ID를 모두 활용해서 매칭
+      // DiagnosisEvaluation.tsx에서 수집한 시나리오/이벤트 ID를 모두 활용해서 매칭
       const matched = resolveAllMatchedThreats(stored)
       setMatchedThreats(matched)
     } catch (error) {
@@ -901,14 +972,14 @@ const ThreatReportPage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <FileText className="w-6 h-6 text-gray-800 mr-2" />
+                <AlertTriangle className="w-6 h-6 text-red-500 mr-2" />
                 <h2 className="text-xl font-semibold text-gray-900">
-                  발생 가능한 위협
+                  발생 가능한 위협 시나리오
                 </h2>
               </div>
-              <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600">
+              <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
                 매칭된 위협 수:{' '}
-                <span className="font-semibold text-gray-800">{matchedThreats.length}</span>
+                <span className="font-semibold text-gray-900">{matchedThreats.length}</span>
               </span>
             </div>
 
@@ -928,98 +999,117 @@ const ThreatReportPage: React.FC = () => {
 
             {matchedThreats.length > 0 && (
               <div className="mt-4 space-y-5">
-                {matchedThreats.map((threat, index) => (
-                  <div
-                    key={`${threat.key}-${index}`}
-                    className="border border-gray-200 rounded-lg p-5 hover:border-purple-300 hover:shadow-md transition-all"
-                  >
-                    {/* 헤더 영역 */}
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 gap-3">
-                      <div>
-                        <div className="flex items-center mb-1">
-                          <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 mr-2">
-                            {threat.category}
-                          </span>
-                          <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
-                            MITRE {threat.mitreId}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                          {threat.threatType}
-                        
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 mr-1.5" />
-                        <span>
-                          이벤트 ID{' '}
-                          <span className="font-semibold text-gray-800">
-                            {threat.eventId}
-                          </span>{' '}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 본문 그리드 */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
-                      {/* 왼쪽: 위협 설명 + 로그 필드 */}
-                      <div className="space-y-3">
+                {matchedThreats.map((threat, index) => {
+                  const meta = getSeverityMeta(threat.severity || 'medium')
+                  return (
+                    <div
+                      key={`${threat.key}-${index}`}
+                      className="border border-gray-200 rounded-lg p-5 hover:border-gray-300 hover:shadow-md transition-all"
+                    >
+                      {/* 헤더 영역 */}
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 gap-3">
                         <div>
-                          <h4 className="flex items-center text-xs font-semibold text-gray-700 mb-1">
-                            <Info className="w-4 h-4 text-blue-500 mr-1.5" />
-                            위협 설명
-                          </h4>
-                          <p className="text-gray-800 leading-relaxed">
-                            {threat.description}
-                          </p>
+                          <div className="flex items-center mb-1 flex-wrap gap-2">
+                            <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                              {threat.category}
+                            </span>
+                            <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
+                              MITRE {threat.mitreId}
+                            </span>
+                            <span
+                              className={
+                                'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ' +
+                                meta.badgeClass
+                              }
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5" />
+                              위험도 {meta.label}
+                            </span>
+                          </div>
+                          <h3
+                            className={
+                              'text-lg font-bold flex items-center gap-1.5 ' +
+                              meta.titleClass
+                            }
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                            {threat.threatType}
+                          </h3>
                         </div>
-                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
-                          <h4 className="text-xs font-semibold text-gray-700 mb-1">
-                            탐지된 이벤트 로그 정보
-                          </h4>
-                          <p className="text-gray-800">
-                            <span className="font-medium">이벤트 ID {threat.eventId}</span>
-                            <span className="text-gray-500"> / 주요 필드: </span>
-                            {threat.logFields}
-                          </p>
+
+                        <div className="flex items-center text-xs bg-gray-50 text-gray-700 px-3 py-2 rounded-lg border border-gray-200">
+                          <span className="font-semibold mr-1">이벤트 ID</span>
+                          <span className="font-bold text-gray-900">{threat.eventId}</span>
                         </div>
                       </div>
 
-                      {/* 오른쪽: 판단 근거 + 발생 상황 */}
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="flex items-center text-xs font-semibold text-gray-700 mb-1">
-                            <Info className="w-4 h-4 text-blue-500 mr-1.5" />
-                            로그 설명
-                          </h4>
-                          <p className="text-gray-800 leading-relaxed">
-                            {threat.rationale}
-                          </p>
+                      {/* 본문 그리드 */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                        {/* 왼쪽: 위협 설명 + 로그 필드 */}
+                        <div className="space-y-3">
+                          <div className={meta.descContainerClass + ' rounded-md p-3'}>
+                            <h4
+                              className={
+                                'flex items-center text-xs font-semibold mb-1 ' +
+                                meta.descTitleClass
+                              }
+                            >
+                              <AlertTriangle className="w-4 h-4 mr-1.5" />
+                              위협 설명 (공격 시나리오)
+                            </h4>
+                            <p className="text-sm text-gray-900 leading-relaxed">
+                              {threat.description}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
+                            <h4 className="text-xs font-semibold text-gray-700 mb-1">
+                              탐지된 이벤트 로그 정보
+                            </h4>
+                            <p className="text-xs text-gray-900 leading-relaxed">
+                              <span className="font-semibold text-gray-900">
+                                이벤트 ID {threat.eventId}
+                              </span>
+                              <span className="text-gray-500"> / 주요 필드: </span>
+                              {threat.logFields}
+                            </p>
+                          </div>
                         </div>
-                        <div className="bg-indigo-50 rounded-md p-3 border border-indigo-100">
-                          <h4 className="text-xs font-semibold text-indigo-800 mb-1">
-                            이 로그가 왜 발생했나요?
-                          </h4>
-                          <p className="text-indigo-900/90 text-xs leading-relaxed">
-                            {threat.situation}
-                          </p>
+
+                        {/* 오른쪽: 판단 근거 + 발생 상황 */}
+                        <div className="space-y-3">
+                          <div>
+                            <h4 className="flex items-center text-xs font-semibold text-gray-700 mb-1">
+                              <Info className="w-4 h-4 text-blue-500 mr-1.5" />
+                              이 로그가 의미하는 위험
+                            </h4>
+                            <p className="text-sm text-gray-900 leading-relaxed">
+                              {threat.rationale}
+                            </p>
+                          </div>
+                          <div className="bg-indigo-50 rounded-md p-3 border border-indigo-100">
+                            <h4 className="text-xs font-semibold text-indigo-800 mb-1">
+                              이 로그가 왜 발견되었나요?
+                            </h4>
+                            <p className="text-xs text-indigo-900/90 leading-relaxed">
+                              {threat.situation}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 개선책 */}
-                    <div className="mt-4 border-t border-dashed border-gray-200 pt-3">
-                      <h4 className="flex items-center text-xs font-semibold text-emerald-700 mb-1.5">
-                        <ShieldCheck className="w-4 h-4 text-emerald-500 mr-1.5" />
-                        보안 대책
-                      </h4>
-                      <p className="text-sm text-gray-800 leading-relaxed">
-                        {threat.improvement}
-                      </p>
+                      {/* 개선책 */}
+                      <div className="mt-4 border-top border-dashed border-gray-200 pt-3">
+                        <h4 className="flex items-center text-xs font-semibold text-emerald-700 mb-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500 mr-1.5" />
+                          보안 대책
+                        </h4>
+                        <p className="text-sm text-gray-900 leading-relaxed">
+                          {threat.improvement}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
