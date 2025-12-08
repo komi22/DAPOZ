@@ -1,0 +1,58 @@
+case_id: CASE-LOG-T1070-1102
+threat_type: LOG
+threat_type_kr: 로그 조작(증거 은닉)
+technique_id: T1070
+technique_name_kr: (지표 제거)
+event_ids: [1102]
+log_fields: |
+  Security ID
+  Account Name
+  Log File
+  Process Information
+log_reason: |
+  Security 로그 클리어 시 1102 이벤트가 생성되어 로그 삭제 행위를 기록한다.
+  Subject > Security ID와 Account Name을 봤을 때 비관리자 계정 또는 비정상 계정으로 1102가 확인되면 의심 악성 로그 클리어를 확인할 수 있어서 지표 제거 가능성을 의심할 수 있다.
+  Log File (Cleared) 필드를 봤을 때 "Security" 로그가 명시되면 의심 보안 흔적 삭제를 확인할 수 있어서 공격자 흔적 은폐 행위를 의심할 수 있다.
+  Process Information을 봤을 때 wevtutil.exe 또는 powershell.exe가 연계되면 의심 명령줄 기반 로그 클리어를 확인할 수 있다.
+log_scenario: |
+  Security 이벤트 로그가 wevtutil cl security, PowerShell Remove-EventLog, 또는 Event Viewer GUI를 통해 클리어될 때 생성된다.
+  따라서 Windows 보안 감사 로그가 지워질 때마다 생성된다.
+  정상적인 시스템 관리 작업에서는 거의 발생하지 않으며, 지표 제거 탐지 시 확인해야 하는 핵심 이벤트 로그이다.
+summary: |
+  공격자는 침입 활동을 숨기기 위해 Windows 이벤트 로그를 삭제하는 경우가 존재한다.
+  Windows 이벤트 로그는 컴퓨터의 경고 및 알림을 기록한다.
+  시스템 정의 이벤트 소스는 시스템, 응용 프로그램, 보안의 세 가지이며, 이벤트 유형은 오류, 경고, 정보, 성공 감사, 실패 감사의 다섯 가지이다.
+policy_direction: |
+  로그 삭제는 공격자가 자신의 활동 흔적을 숨기기 위해 수행하는 대표적 지표 제거 기법이므로, 보안 로그·시스템 로그에 대한 삭제 및 변경 권한을 철저히 제한해야 한다.
+  특히 wevtutil·PowerShell 기반 이벤트 클리어가 대부분의 공격에 사용되므로, 이러한 명령 실행 도구의 사용을 통제하는 것이 핵심이다.
+  또한 일반 사용자나 비인가 계정이 로그 파일을 초기화하거나 이벤트 뷰어를 통한 조작을 수행하지 못하도록 권한 구조와 운영 절차를 강화해야 한다.
+  핵심은 로그 삭제 권한 최소화, 명령 기반 클리어 차단, 운영 계정 관리 강화이다.
+steps:
+  - title: AppLocker 관련 설정
+    details: |
+      AppLocker 또는 WDAC 정책을 적용해 wevtutil.exe, powershell.exe Remove-EventLog, eventvwr.exe 등의 로그 조작에 사용되는 도구를 일반 사용자가 실행하지 못하도록 제한한다
+      
+      C:\\Windows\\System32\\winevt\\Logs 디렉터리의 NTFS 권한을 점검하여 Administrators와 SYSTEM만 로그 파일에 대한 쓰기 및 삭제 권한을 갖도록 구성한다
+      
+      그룹 정책(gpedit.msc)의 보안 옵션 → 감사 정책에서 "보안 로그: 액세스 및 삭제 권한"을 최소 권한 사용자에게만 부여해 로그 조작 가능성을 줄인다
+  - title: MFA 관련 설정
+    details: |
+      마지막으로 로컬 관리자 계정을 최소화하고, 운영 계정에 대해 MFA 및 강력한 암호 정책을 적용해 공격자가 관리자 권한을 획득해 로그를 삭제하는 상황 자체를 어렵게 만든다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 1102에서 Security ID 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (지표 제거) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1070
+    url: https://attack.mitre.org/techniques/T1070/
+  - title: Microsoft Event ID 1102
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-1102

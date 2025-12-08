@@ -1,0 +1,61 @@
+case_id: CASE-MISCFG-T1068-4672
+threat_type: MISCFG
+threat_type_kr: 시스템 취약·설정오류 악용
+technique_id: T1068
+technique_name_kr: 권한 상승 익스플로잇
+event_ids: [4672]
+log_fields: |
+  Account Name
+  Account Domain
+  Logon ID
+  Privileges
+  Logon Process Name
+log_reason: |
+  사용자가 로그인하거나 프로세스가 SYSTEM 계정으로 실행될 때 부여되는 고위험 Privilege 활성화를 확인할 수 있어, 권한 상승 시도의 핵심 지표로 활용된다.
+  정상적인 환경에서는 LocalSystem·서비스 계정·관리자 계정 로그인 시 주기적으로 발생하는 일상적 이벤트지만, 일반 사용자 계정에서 예상되지 않는 SeDebugPrivilege·SeImpersonatePrivilege 등이 활성화될 경우 명확한 이상 징후로 판단된다.
+  또한 이벤트 상세 항목에 기록되는 LogonProcessName 값은 권한 상승이 정상 로그온을 통해 이루어진 것인지, 익스플로잇 코드 실행 등 비정상 경로로 발생했는지를 구분하는 근거가 된다.
+  따라서 권한 상승 익스플로잇과 같이 취약점 악용을 통한 권한 상승 공격 탐지에서 가장 신뢰도가 높은 핵심 이벤트이다.
+log_scenario: |
+  사용자가 로그인하거나 프로세스가 SYSTEM 권한으로 동작하는 시점에 특별 권한이 부여될 때 발생한다.
+  정상적인 경우에는 LocalSystem·서비스 계정·관리자 계정 로그인 직후에 나타나는 일상적 이벤트이지만, 비정상적인 경우에는 일반 사용자 계정에서 예상되지 않은 고위험 Privilege가 활성화되거나, 악성 프로세스(dropper, exploit payload 등)가 SeDebugPrivilege 같은 고위험 권한을 요청할 때 발생한다.
+  또한 권한 상승 익스플로잇(CVE 기반 취약점 악용) 실행 후, 쉘(Session 0)이나 임시 계정으로 시스템 권한 전환이 시도될 때 동일한 4672 이벤트가 기록되어 공격 징후를 포착할 수 있다.
+summary: |
+  공격자는 더 높은 권한을 얻기 위해 프로그램·서비스·운영체제·커널의 소프트웨어 취약점을 악용한다.
+  초기 침투 시 낮은 권한에 머무르지만, 취약한 시스템 구성 요소를 이용하면 사용자 권한 → 관리자/SYSTEM 권한으로 상승할 수 있다.
+  가상 머신이나 컨테이너 환경에서도 취약점을 통해 게스트에서 호스트로 이동이 가능하다.
+  또한 공격자는 BYOVD 기법을 사용해 취약한 서명 드라이버를 로드하여 커널 모드에서 악성 코드를 실행하기도 한다.
+policy_direction: |
+  권한 상승 취약점 악용을 막기 위해서는 OS·드라이버·서비스의 최신 보안 패치를 적용해 로컬 권한 상승(LPE) 취약점을 제거하는 것이 가장 중요하다.
+  일반 사용자 계정이 SYSTEM/Administrator 수준의 고위험 Privilege(SeDebugPrivilege, SeImpersonatePrivilege 등)를 획득할 수 없도록 권한 모델을 최소화해두어야 한다.
+  또한 BYOVD 공격처럼 취약한 서명 드라이버 로드를 통해 커널 권한을 얻는 기법을 차단하기 위해, 신뢰되지 않은 드라이버 설치·로딩 경로를 차단해야 한다.
+  핵심은 패치 관리·특권 최소화·드라이버 무결성 보호이다.
+steps:
+  - title: 상세 설정
+    details: |
+      로컬 보안 정책(secpol.msc)의 사용자 권한 할당에서 SeDebugPrivilege, SeImpersonatePrivilege, SeLoadDriverPrivilege 등의 고위험 특권을 반드시 관리자 또는 시스템 서비스만 갖도록 제한한다
+  - title: AppLocker 설정
+    details: |
+      AppLocker/WDAC 정책을 구성해 임의 드라이버(.sys) 파일의 로딩을 차단하거나, 핵심 보안 기능(Kernel-mode Code Integrity / HVCI)을 활성화해 서명되지 않았거나 취약한 드라이버의 로딩을 방지한다
+      
+      Windows Update와 WSUS를 통해 OS 및 드라이버 보안 패치를 주기적으로 적용해 권한 상승 취약점(CVE 기반 LPE)의 악용 가능성을 최소화한다
+  - title: 상세 설정
+    details: |
+      마지막으로 서비스 실행 계정과 권한을 점검해 일반 사용자 계정이 시스템 서비스나 관리자 권한 프로세스를 생성·변경할 수 없도록 권한 구성을 강화한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4672에서 Account Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 권한 상승 익스플로잇 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1068
+    url: https://attack.mitre.org/techniques/T1068/
+  - title: Microsoft Event ID 4672
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4672

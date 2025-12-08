@@ -1,0 +1,56 @@
+case_id: CASE-CRED-T1003-4648
+threat_type: CRED
+threat_type_kr: 크리덴셜 공격
+technique_id: T1003
+technique_name_kr: 자격 증명 덤프
+event_ids: [4648]
+log_fields: |
+  Process Name
+  Process ID
+  Account Whose Credentials Were Used > Account Name
+  Subject > Account Name
+  Target Server > Target Server Name
+log_reason: |
+  PtH 공격 체인의 자격증명 재사용/전달 단계를 직접적으로 포착할 수 있는 이벤트이다.
+  이벤트 로그의 자세히 항목에서 Subject > Account Name과 Account Whose Credentials Were Used > Account Name 항목을 봤을 때 두 값이 다르면 의심 계정 전환을 확인할 수 있어서 자격 증명 덤프 가능성을 의심할 수 있다.
+  이는 Microsoft 공식 문서에서 명시한 자격 증명 도용 탐지 핵심 지표이다.
+  이벤트 로그의 자세히 항목에서 Process Name, Process ID를 봤을 때 비표준 경로나 도구 이름이 확인되면 의심 덤프 도구 실행을 확인할 수 있어서 자격 증명 덤프 행위를 의심할 수 있다.
+  이벤트 로그의 자세히 항목에서 Target Server > Target Server Name을 봤을 때 localhost 외 원격 서버 이름이 확인되면 의심 측면 이동을 확인할 수 있어서 자격 증명 덤프 후 PtH 공격 전파를 의심할 수 있다.
+log_scenario: |
+  이 이벤트는 프로세스가 해당 계정의 자격 증명을 명시적으로 지정하여 계정 로그온을 시도할 때 생성된다.
+  이는 예약된 작업과 같은 일괄 처리 유형 구성이나 "RUNAS" 명령을 사용할 때 가장 일반적으로 발생한다.
+  이는 정상적인 운영 체제 활동 중에 주기적으로 발생하는 일상적인 이벤트이기도 하나 자격 증명 덤프 위협 측정 시 확인해야 하는 이벤트 로그이다.
+summary: |
+  공격자는 계정 로그인 및 자격 증명 자료를 얻기 위해 자격 증명을 유출하려고 시도할 수 있으며, 일반적으로 해시 또는 일반 텍스트 비밀번호 형태로 제공된다.
+  자격 증명은 OS 캐시, 메모리 또는 구조에서 얻을 수 있습니다.
+  이후 자격 증명을 사용하여 측면 이동을 수행 하고 제한된 정보에 접근할 수 있다.
+policy_direction: |
+  자격 증명 덤프와 PtH 공격을 막기 위해서는 크리덴셜을 저장·관리하는 LSASS와 Kerberos/NTLM 자격 증명 저장소를 보호해야 한다.
+  또한 불필요한 관리자 권한과 계정 전환 경로를 최소화해 공격자가 확보한 해시나 토큰을 재사용하지 못하도록 해야 한다.
+steps:
+  - title: LSA 관련 설정
+    details: |
+      gpedit.msc를 열어 컴퓨터 구성 → 관리 템플릿 → 시스템 → 로컬 보안 기관에서 LSA Protection을 '사용'으로 설정해 LSASS 메모리 접근을 차단한다
+  - title: Credential Guard 관련 설정
+    details: |
+      이어서 시스템 → Device Guard에서 Credential Guard를 활성화해 NTLM 해시·Kerberos 티켓을 보호한다
+      
+      lusrmgr.msc에서 관리자 그룹을 점검해 불필요한 관리자 계정을 비활성화한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4648에서 Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 자격 증명 덤프 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1003
+    url: https://attack.mitre.org/techniques/T1003/
+  - title: Microsoft Event ID 4648
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4648

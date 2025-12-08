@@ -1,0 +1,60 @@
+case_id: CASE-MISCFG-T1203_T1210-4688
+threat_type: MISCFG
+threat_type_kr: 시스템 취약·설정오류 악용
+technique_id: T1210
+technique_name_kr: 특정 취약점 익스플로잇
+event_ids: [4688]
+log_fields: |
+  Creator Process Name
+  New Process Name
+  Process
+  Command Line
+  Mandatory Level
+log_reason: |
+  취약한 클라이언트 애플리케이션(웹 브라우저, PDF/Office 뷰어 등)이 예상되지 않은 명령 인터프리터(cmd.exe, powershell.exe) 또는 rundll32.exe 같은 실행 파일을 새롭게 생성하는지를 확인할 수 있는 핵심 로그이다.
+  정상적인 문서 열기나 웹 페이지 렌더링 과정에서는 이러한 프로세스 체인이 나타나지 않기 때문에, 브라우저/문서뷰어에서 New Process가 명령 실행 도구이면 취약점 악용을 통한 RCE 가능성을 강하게 의심할 수 있다.
+  특히 Command Line에 스크립트 실행, DLL 로딩, 임시 파일 생성 등이 포함되면 악성 행위 여부 판단에 매우 결정적이다.
+log_scenario: |
+  사용자가 단순히 웹페이지를 열거나 Office/PDF 문서를 열었을 뿐인데, 브라우저나 문서 프로그램이 내부적으로 cmd.exe, powershell.exe, rundll32.exe 등을 비정상적으로 호출하여 새 프로세스가 생성되는 경우에 발생한다.
+  이는 브라우저·ActiveX·PDF·Office 취약점이 트리거되어 공격자의 셸코드가 실행되면서 명령 실행 환경을 만들어내는 과정에서 자주 나타나는 패턴이다.
+  추가적으로, 악성 문서가 취약한 매크로 엔진 또는 OLE 개체를 통해 외부 DLL을 로드하고 실행할 때도 동일한 형태의 4688 이벤트가 기록된다.
+summary: |
+  공격자는 웹 브라우저, Office 문서(PDF/Word/Excel), 멀티미디어 플레이어 등과 같이 사용자가 직접 실행하는 클라이언트 애플리케이션의 취약점을 악용하여 원격 코드 실행(RCE)을 시도한다.
+  이 과정은 사용자가 단순히 웹페이지를 방문하거나 이메일 첨부 파일을 열기만 해도 자동으로 트리거될 수 있어 탐지가 어렵다.
+  취약한 ActiveX·브라우저 엔진·PDF 렌더러·Office 매크로/OLE 개체 등을 통해 공격자가 삽입한 셸코드가 실행되면, 클라이언트 프로그램이 비정상적으로 cmd.exe, powershell.exe, rundll32.exe 등을 생성하며 공격자 제어 코드가 수행된다.
+  이를 통해 공격자는 피해자 시스템 내부에 초기 거점을 확보하고, 추가 페이로드 다운로드·정보 탈취·추가 권한 상승 등의 후속 공격을 수행할 수 있다.
+policy_direction: |
+  클라이언트 애플리케이션 취약점 악용을 막기 위해서는 브라우저·PDF 뷰어·Office 등 사용자가 직접 여는 프로그램의 취약점을 신속히 패치하고, 불필요한 플러그인(ActiveX·스크립팅 엔진 등)을 제거해 공격 표면을 줄이는 것이 필수적이다.
+  악성 문서나 웹 콘텐츠는 최종적으로 cmd.exe·powershell.exe·rundll32.exe 등 명령 실행 도구를 호출하므로, 클라이언트 프로그램이 이러한 프로세스를 생성하지 못하도록 실행 체인을 통제하는 것이 매우 효과적이다.
+  또한 문서 기반 공격에서 흔히 활용되는 매크로·OLE·스크립트 로딩 기능을 제한하면 취약점이 트리거되어도 후속 페이로드 실행이 어렵게 된다.
+  핵심은 최신 패치 유지, 플러그인 제거, 실행 경로 차단, 문서 자동 실행 기능 축소이다.
+steps:
+  - title: 상세 설정
+    details: |
+      Chrome·Edge·Adobe Reader·Office 등 주요 클라이언트 프로그램을 최신 버전으로 유지하고, 브라우저에서 ActiveX·불필요한 확장 프로그램·스크립트 실행 권한을 비활성화해 취약점 공격면을 축소한다
+      
+      Office 설정에서 Word·Excel의 매크로 옵션을 “서명된 매크로만 허용”으로 변경하고 OLE 개체 자동 실행을 비활성화해 악성 문서가 cmd·powershell·rundll32를 호출할 수 있는 경로를 차단한다
+  - title: AppLocker 설정
+    details: |
+      AppLocker/WDAC 규칙을 통해 브라우저나 문서 뷰어 프로세스가 명령 인터프리터(powershell.exe, wscript.exe, rundll32.exe)를 자식 프로세스로 생성하지 못하도록 제한한다
+  - title: 상세 설정
+    details: |
+      마지막으로 PDF/문서 뷰어의 “인터넷에서 가져온 파일 보호 모드(Sandbox)” 또는 Edge/Chrome의 Site Isolation 기능을 활성화해 취약점이 발생하더라도 시스템 명령 실행으로 이어지지 않도록 방어층을 추가한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 Creator Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 특정 취약점 익스플로잇 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1210
+    url: https://attack.mitre.org/techniques/T1210/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688

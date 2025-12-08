@@ -1,0 +1,56 @@
+case_id: CASE-MISCFG-T1190-4688
+threat_type: MISCFG
+threat_type_kr: 시스템 취약·설정오류 악용
+technique_id: T1190
+technique_name_kr: (공개서비스 익스플로잇)
+event_ids: [4688]
+log_fields: |
+  New Process Name
+  Creator Process Name
+  Process Command Line
+  Mandatory Level
+log_reason: |
+  웹 서비스 프로세스(w3wp.exe, sqlservr.exe 등)가 자식 프로세스로 cmd.exe·powershell.exe를 생성하는지를 확인할 수 있는 핵심 로그이다.
+  정상적인 환경에서는 웹 서버가 OS 명령 인터프리터를 실행하지 않으므로 Parent Process Name이 웹 서버인데 Command Line에 외부 다운로드(iwr/wget), PowerShell 인코딩(-enc), 스크립트 실행 등이 보이면 취약점 악용에 의한 RCE 가능성이 매우 높다.
+log_scenario: |
+  공격자가 Windows 웹 서비스나 애플리케이션 취약점을 악용해 내부로 침투하려고 시도할 때, 웹 서버(w3wp.exe)나 데이터베이스(sqlservr.exe) 같은 정상 서비스 프로세스가 cmd.exe·powershell.exe·rundll32.exe 같은 명령 인터프리터를 비정상적으로 생성하는 상황에서 해당 로그가 발생한다.
+  또한 IIS 취약점 악용으로 웹쉘이 업로드되어 OS 명령이 실행되거나, SQL Injection을 통해 xp_cmdshell이 호출될 때도 동일한 4688 프로세스 생성 로그가 나타난다.
+  SMB/RDP 등 외부 공격 표면의 서비스 취약점을 악용해 원격 코드 실행이 이루어질 때도 동일한 형태의 프로세스 생성 이벤트가 기록되어 내부 침투의 근거가 된다.
+summary: |
+  공격자는 인터넷과 연결된 Windows 서버·서비스의 취약점을 악용해 내부망에 최초 접근을 시도한다.
+  이러한 취약점은 웹 서버(IIS), 데이터베이스(SQL Server), SMB, RDP, WinRM, SNMP 등의 잘못된 구성, 패치 미적용, 인증 우회 버그 등에서 발생한다.
+  악용에 성공하면 웹 서버(w3wp.exe)나 서비스 프로세스에서 비정상 명령 실행(cmd.exe·powershell.exe)이 발생하며, 이를 통해 내부 시스템으로 이동하거나 추가 악성 페이로드를 실행할 수 있다.
+policy_direction: |
+  공개 서비스 취약점 악용을 차단하기 위해서는 인터넷에 노출된 서비스(IIS, RDP, WinRM, SMB, SQL Server 등)의 공격 표면을 최소화하고 최신 패치를 유지하는 것이 가장 중요하다.
+  공격자는 취약한 서비스 프로세스(w3wp.exe, sqlservr.exe 등)를 통해 cmd.exe·powershell.exe 같은 명령 인터프리터를 실행시키므로, 서비스 계정 권한과 실행 경로를 제한해 RCE(원격 코드 실행) 후속 행동을 차단해야 한다.
+  또한 불필요한 웹 기능·핸들러·모듈을 제거하고, 인증 우회나 잘못된 구성으로 인해 외부 요청이 OS 명령 실행으로 이어지는 구조를 없애는 것이 필수적이다.
+  본질적으로는 서비스 강화, 권한 최소화, 패치 적용, 공격 표면 축소 전략이 핵심이다.
+steps:
+  - title: AppLocker 관련 설정
+    details: |
+      IIS 관리자에서 핸들러 매핑·웹DAV·ISAPI 확장 등 불필요한 웹 기능을 비활성화하고, 애플리케이션 풀을 “AppPoolIdentity”로 실행해 웹 서비스가 로컬 관리자 권한을 갖지 않도록 설정한다
+      
+      gpedit.msc 또는 로컬 보안 정책에서 w3wp.exe, sqlservr.exe 같은 서비스 계정에 대해 PowerShell·cmd·rundll32 실행 권한을 제거하거나, AppLocker/WDAC으로 해당 서비스가 OS 명령 인터프리터를 실행하지 못하도록 제한한다
+      
+      RDP·WinRM·SMB 등 외부 공격 표면이 되는 포트는 wf.msc(Windows 방화벽)에서 특정 관리용 IP만 접근하도록 제한하고, 사용하지 않는 경우 완전히 비활성화한다
+  - title: 상세 설정
+    details: |
+      마지막으로 Windows Update와 제품 보안 패치를 정기적으로 적용해 인증 우회·RCE 취약점이 남아 있는 상태로 운영되지 않도록 한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 New Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (공개서비스 익스플로잇) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1190
+    url: https://attack.mitre.org/techniques/T1190/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688

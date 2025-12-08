@@ -1,0 +1,57 @@
+case_id: CASE-STAGING-T1560-4688
+threat_type: STAGING
+threat_type_kr: 대량 스테이징(데이터 탈취 준비)
+technique_id: T1560
+technique_name_kr: (Archive Collected Data)
+event_ids: [4688]
+log_fields: |
+  New Process Name
+  New Process ID
+  Process Command Line
+log_reason: |
+  Archive Collected Data 위협을 직접적으로 포착할 수 있는 이벤트이다.
+  MITRE ATT&CK 공식 Detection Strategy (DET0526, DET0298)에서 "makecab.exe 등 압축 유틸리티 실행 시 CommandLine에서 압축/암호화 패턴 탐지"로 명시한다.
+  Process Name과 Command Line 항목을 봤을 때 makecab.exe와 압축 옵션(-ep1, a 등)이 확인되면 의심 데이터 아카이빙을 확인할 수 있어서 Archive Collected Data 가능성을 의심할 수 있다.
+  Process Name, Process ID를 봤을 때 비표준 압축 도구(WinRAR.exe)가 %TEMP%/%APPDATA% 경로와 연계되면 스테이징 아카이빙에 대한 의심을 확인할 수 있어서 데이터 탈취 준비 행위를 의심할 수 있다.
+  이 행위를 더 잘 탐지하기 위해서는 Sysmon 11의 확인이 요구된다.
+log_scenario: |
+  새로운 프로세스가 생성될 때마다 발생하며, makecab.exe, winrar.exe 등 압축/암호화 유틸리티가 실행되어 데이터를 압축하거나 암호화할 때 생성된다.
+  이는 정상적인 백업 작업이나 파일 공유 활동에서도 발생하나, Archive Collected Data 위협 탐지 시 확인해야 하는 핵심 이벤트 로그이다.
+summary: |
+  공격자는 유출 전에 수집된 데이터를 압축 및/또는 암호화할 수 있습니다.
+  데이터 압축은 수집된 데이터를 난독화하고 네트워크를 통해 전송되는 데이터 양을 최소화하는 데 도움이 될 수 있다.
+  암호화는 유출되는 정보를 탐지에서 숨기거나 방어자가 조사할 때 유출 사실을 덜 눈에 띄게 하는 데 사용될 수 있다.
+policy_direction: |
+  데이터 압축·암호화 기반의 유출 준비를 막기 위해서는 시스템 내부에서 임의 압축 도구(7z, rar, makecab 등)가 실행되거나, 사용자 영역에서 대량 파일을 묶는 프로세스가 작동하지 않도록 실행 경로를 통제해야 한다.
+  공격자는 데이터 유출 전에 압축·분할·암호화를 진행하므로, 비정상 위치(TEMP·AppData 등)에서의 아카이빙 작업을 불가능하게 만들면 스테이징 단계를 크게 제한할 수 있다.
+  또한 중요 데이터가 저장된 위치의 읽기·복사·패킹을 제한하여 내부 사용자가 대량 파일을 모아 하나로 묶는 동작 자체를 어렵게 해야 한다.
+  즉, 압축 도구 실행 차단·비정상 폴더 접근 제한·대량 파일 처리 방지 전략이 핵심이다.
+steps:
+  - title: AppLocker 관련 설정
+    details: |
+      AppLocker 또는 WDAC 정책을 적용해 7z.exe, WinRAR.exe, rar.exe, makecab.exe 등 압축 도구의 실행을 차단하거나 특정 관리자만 실행하도록 제한해 악성 아카이빙을 원천적으로 막을 수 있다
+      
+      또한 C:\\Users\\<User>\\AppData, Temp, Downloads 같은 일반 사용자 쓰기 경로에 대해 실행 권한을 제거해 이 경로에서 비정상적인 압축 도구가 동작할 수 없도록 한다
+      
+      네트워크 공유 폴더나 중요 데이터가 저장된 디렉터리에서는 읽기·복사·압축 실행(Execute) 권한을 최소화하여 내부 사용자가 대량 파일을 묶어가는 행위를 어렵게 만든다
+  - title: 상세 설정
+    details: |
+      마지막으로 PowerShell에서 Set-ExecutionPolicy AllSigned/Restricted를 적용해 스크립트 기반 아카이빙 도구 호출(iwr → 7z 실행 등)이 자동으로 이루어지지 않도록 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 New Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (Archive Collected Data) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1560
+    url: https://attack.mitre.org/techniques/T1560/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688

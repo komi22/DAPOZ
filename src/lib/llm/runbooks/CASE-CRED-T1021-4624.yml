@@ -1,0 +1,56 @@
+case_id: CASE-CRED-T1021-4624
+threat_type: CRED
+threat_type_kr: 크리덴셜 공격
+technique_id: T1021
+technique_name_kr: 원격 서비스
+event_ids: [4624]
+log_fields: |
+  LogonType
+  AuthenticationPackage
+  Account Name
+  Logon Process Name
+log_reason: |
+  원격 서비스 악용 시 반드시 나타나는 원격 로그인 기록을 포함하고 있어 원격 서비스 위협을 직접적으로 포착할 수 있는 핵심 이벤트이다.
+  이벤트 로그의 LogonType 값이 3(SMB/네트워크 로그인) 또는 10(RDP) 으로 나타나면 원격 접속 시도가 명확히 확인된다.
+  AuthenticationPackage가 NTLM 으로 나타나는 경우, Kerberos 대신 NTLM이 강제되어 사용된 원격 이동·자격 증명 재사용 가능성을 의심할 수 있다.
+  Account Name, Logon Process Name 항목을 통해 어떤 계정이 어떤 원격 프로세스를 통해 접속을 시도했는지 확인할 수 있어, 비정상 계정 사용 또는 측면 이동 시도 여부를 판단할 수 있다.
+log_scenario: |
+  공격자가 SMB, RDP, WMI, WinRM 등 원격 서비스 기능을 이용해 다른 시스템에 로그인하거나 원격 명령을 실행할 때 발생하는 핵심 이벤트이다.
+  LogonType이 3(SMB·네트워크 로그인) 또는 10(RDP)으로 나타나면 원격 접속이 실제로 수행된 것으로 판단할 수 있다.
+  또한 공격자가 탈취한 자격 증명이나 NTLM 기반 인증을 이용해 원격 시스템에 접근할 때도 동일하게 발생하며, 내부 측면 이동이나 원격 명령 실행 도구(PSExec, WMIexec 등)가 사용될 때 반복적으로 기록된다.
+summary: |
+  공격자는 탈취하거나 확보한 유효한 계정을 이용해 Telnet, SSH, VNC, RDP 등 원격 접속을 허용하는 서비스에 로그인하여 해당 사용자 권한으로 작업을 수행할 수 있다.
+  기업 환경의 도메인 구조에서는 하나의 도메인 계정으로 여러 시스템에 접근할 수 있기 때문에, 공격자가 도메인 자격 증명을 얻으면 네트워크 전반으로 원격 로그인 및 측면 이동이 가능해진다.
+  또한 ARD·VNC·SSH 기반 원격 프로토콜을 통해 원격 코드 실행 및 권한 확대가 이루어질 수 있다.
+  일부 환경에서는 원격 세션을 이용해 사용자 동의 절차(TCC 등)를 우회하고 민감 데이터에 접근하는 공격도 가능하다.
+policy_direction: |
+  원격 서비스 악용을 막기 위해서는 RDP, SMB, WMI, WinRM 등 원격 로그인 경로를 최소화하고, 허용된 사용자와 시스템만이 원격 인증을 수행하도록 접근 통제를 강화하는 것이 핵심이다.
+  또한 Kerberos 기반 인증을 우선 적용하고 NTLM 사용을 줄여 공격자가 탈취한 계정을 이용해 측면 이동하기 어렵게 만들어야 한다.
+  더불어 원격 로그인(LogonType 3·10)에 대한 정교한 감시를 통해 비정상 계정 사용, NTLM 기반 인증, PSExec/WMIexec 등 원격 실행 도구 사용을 빠르게 식별해야 한다.
+  전반적으로 원격 접근 최소화, 인증 강화, 감사 로그 기반 모니터링이 주요 방어 전략이 된다.
+steps:
+  - title: RDP 관련 설정
+    details: |
+      SystemPropertiesRemote.exe 또는 설정 메뉴에서 원격 데스크톱을 비활성화하거나, 필요한 경우에만 특정 사용자만 접속할 수 있도록 "원격 데스크톱 사용자 그룹"을 최소 구성한다
+      
+      secpol.msc에서 로컬 정책 → 보안 옵션의 "LAN Manager 인증 수준"을 NTLMv2만 허용하도록 설정하여 NTLM 기반 원격 인증을 최대한 줄인다
+      
+      wf.msc(Windows 방화벽)에서 RDP(3389), SMB(445), WinRM(5985/5986) 등 원격 서비스 포트를 허용된 내부 구간 또는 특정 IP로 제한해 불필요한 원격 접근을 근본적으로 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4624에서 LogonType 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 원격 서비스 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1021
+    url: https://attack.mitre.org/techniques/T1021/
+  - title: Microsoft Event ID 4624
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4624

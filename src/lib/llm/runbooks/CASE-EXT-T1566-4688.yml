@@ -1,0 +1,55 @@
+case_id: CASE-EXT-T1566-4688
+threat_type: EXT
+threat_type_kr: 의도적 외부 공격자
+technique_id: T1566
+technique_name_kr: 피싱
+event_ids: [4688]
+log_fields: |
+  New Process Name
+  Creator Process Name
+log_reason: |
+  피싱 자체를 직접적으로 기록하지 않지만, 사용자가 악성 첨부파일 또는 악성 URL을 실행한 이후 나타나는 비정상적 프로세스 생성 흔적을 통해 후속 공격을 탐지할 수 있는 핵심 로그이다.
+  Outlook·Chrome·Word·Excel 등 정상 애플리케이션이 powershell.exe, wscript.exe 등의 자식 프로세스를 생성할 경우 피싱 성공 가능성을 명확히 파악할 수 있다.
+  Parent Process Name과 CommandLine을 통해 스크립트 기반 드롭퍼·매크로 실행 여부를 상세하게 확인할 수 있다.
+log_scenario: |
+  피해자가 악성 첨부파일(docm·js·zip·exe 등)을 실행하거나, 이메일·메신저·SNS에 포함된 악성 URL 클릭 후 스크립트 기반 드롭퍼(mshta·wscript·powershell 등)가 실행될 때 반복적으로 발생한다.
+  Outlook·Chrome·Word 같은 정상 프로그램이 비정상 자식 프로세스(powershell.exe, wscript.exe 등)를 생성하면 피싱이 실제로 실행된 정황으로 판단할 수 있으며, 매크로 기반 실행·HTML 스크립트 로더·브라우저 프로세스 체인 변조 등이 나타나면 후속 침투(계정 탈취·원격 명령 실행)로 이어질 가능성이 높다.
+summary: |
+  공격자는 피해자에게 악성 링크나 첨부파일이 포함된 메시지를 보내 악성코드 실행이나 계정 탈취를 유도한다.
+  피싱은 이메일·메신저·소셜 미디어 등 전자적 채널을 통해 전달되며, 특정 대상을 겨냥한 스피어피싱 또는 대량 스팸 형태로 이루어진다.
+  공격자는 신뢰받는 기관을 사칭하거나 이메일 스푸핑, 숨김 규칙, 메타데이터 조작, 스레드 하이재킹 등 회피 기법을 활용해 사용자를 속이고 보안 검증을 우회한다.
+policy_direction: |
+  피싱 공격을 막기 위해서는 사용자가 악성 첨부파일을 실행하거나 악성 링크를 열지 못하도록 애플리케이션 실행 경로와 스크립트 실행 체인을 통제하는 것이 중요하다.
+  특히 정상 프로그램(Outlook, Word, Chrome)이 PowerShell·cmd·wscript 같은 스크립트 실행 도구를 자식 프로세스로 생성하지 못하도록 제한하면 피싱 후속 공격의 대부분을 차단할 수 있다.
+  또한 매크로·스크립트 기반 드롭퍼 사용을 어렵게 만들고, 전자 메일 첨부파일 정책 및 링크 차단 정책을 강화하여 초기 실행 자체가 일어나지 않도록 설계해야 한다.
+  핵심은 실행 경로 통제, 스크립트 제한, 첨부파일·링크 기반 초기 실행 차단이다.
+steps:
+  - title: 상세 설정
+    details: |
+      gpedit.msc의 사용자 구성 → 관리 템플릿 → Microsoft Office에서 Word·Excel 매크로 설정을 "서명된 매크로만 실행" 또는 "모두 차단"으로 변경해 매크로 기반 드롭퍼 실행을 막을 수 있다
+      
+      또한 powershell.exe에서 Set-ExecutionPolicy Restricted 또는 AllSigned로 설정해 사용자 단에서 임의 스크립트 실행을 차단할 수 있다
+  - title: AppLocker 설정
+    details: |
+      AppLocker 또는 WDAC(Windows Defender Application Control)를 활용해 Outlook·Chrome·Word·Excel과 같은 애플리케이션이 PowerShell, wscript, cmd 등의 실행 파일을 자식 프로세스로 생성하지 못하도록 실행 규칙을 설정할 수 있다
+  - title: 상세 설정
+    details: |
+      마지막으로 Windows Defender의 “첨부파일 보호(SmartScreen)” 기능을 활성화해 이메일·웹 경로에서 내려온 실행 파일·스크립트 실행을 기본적으로 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 New Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 피싱 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1566
+    url: https://attack.mitre.org/techniques/T1566/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688
