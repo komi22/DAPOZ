@@ -1,0 +1,59 @@
+case_id: CASE-MISCFG-T1547-7045
+threat_type: MISCFG
+threat_type_kr: 시스템 취약·설정오류 악용
+technique_id: T1547
+technique_name_kr: 서비스·자동실행
+event_ids: [7045]
+log_fields: |
+  Service Name
+  Service File Name
+  Start Type
+  Service Account
+log_reason: |
+  새 서비스가 설치될 때마다 기록되며, 이는 공격자가 지속성을 확보하기 위해 ‘서비스 등록’을 수행할 때 가장 직접적으로 드러나는 핵심 로그이다.
+  정상 설치 시에도 발생할 수 있으나, cmd.exe·powershell.exe·rundll32.exe 같은 비정상 실행 파일이 서비스로 등록되거나, 서비스 파일 경로가 Temp·AppData 등 비정상적 디렉터리일 경우 악성 서비스 설치 가능성이 매우 높다.
+  또한 LocalSystem 계정으로 실행되거나 StartType이 자동 실행으로 설정된 경우 권한 상승 및 지속성 확보 의도가 강하게 의심된다.
+  따라서 7045는 서비스 기반 지속성 탐지에 있어 가장 밀접하며 신뢰도 높은 핵심 이벤트 ID이다.
+log_scenario: |
+  공격자가 악성 코드를 지속적으로 실행하기 위해 "sc create" 또는 PowerShell의 New-Service로 새로운 서비스를 등록할 때 발생한다.
+  또한 사용자가 설치하지 않은 프로그램이 갑자기 자동 실행 서비스로 추가되거나, 정상 프로그램처럼 위장한 악성 바이너리가 서비스로 등록될 때도 동일한 로그가 남는다.
+  원격 침투 후 공격자가 내부 장악을 위해 LocalSystem 권한 서비스 설치를 시도할 때, 혹은 랜섬웨어가 부팅 시 자동 실행을 위해 자기 자신을 서비스로 등록하는 경우에도 이 이벤트가 발생한다.
+summary: |
+  공격자는 시스템이 부팅되거나 사용자가 로그온할 때 자동으로 실행되는 프로그램(자동 시작 메커니즘)을 악용해 지속성을 확보하거나 권한을 상승시킬 수 있다.
+  해당 자동 실행 기능은 Windows 레지스트리, 시작 프로그램 폴더, 서비스, 스케줄러 등 다양한 위치에 존재하며, 공격자는 여기에 악성 프로그램을 추가하거나 시스템 설정을 변경해 부팅 시 자동으로 실행되도록 만들 수 있다.
+  일부 자동 시작 항목은 높은 권한으로 실행되기 때문에, 이를 악용하면 권한 상승도 가능하다.
+policy_direction: |
+  서비스 기반 지속성 공격을 막기 위해서는 부팅·로그온 시 자동 실행되는 영역(서비스, 스케줄러, 레지스트리 Run 키, 시작 프로그램 폴더 등)에 임의 실행 파일이 추가되지 않도록 실행 권한과 쓰기 권한을 최소화해야 한다.
+  공격자는 Temp·AppData 경로 등 비정상 위치에 악성 바이너리를 배치해 서비스로 등록하므로, 자동 실행 경로의 파일 무결성과 실행 체인을 엄격히 통제하는 것이 중요하다.
+  또한 LocalSystem 계정으로 실행되는 서비스는 권한 상승 기회가 되므로, 서비스 계정 권한을 최소화하고 불필요한 자동 실행 항목을 제거해야 지속성 확보와 권한 상승을 동시에 억제할 수 있다.
+  핵심은 자동 실행 경로 통제·권한 최소화·비정상 서비스 실행 차단이다.
+steps:
+  - title: 상세 설정
+    details: |
+      services.msc에서 설치된 서비스 목록을 정기적으로 점검하고, 사용하지 않는 서비스는 "사용 안 함"으로 전환해 공격자가 악성 서비스를 위장해 추가할 여지를 줄인다
+  - title: AppLocker 설정
+    details: |
+      AppLocker 또는 WDAC 정책을 적용해 Temp·AppData·Downloads 같은 비정상 디렉터리의 실행 파일이 서비스로 등록·실행되지 못하도록 제한할 수 있다
+      
+      레지스트리의 HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run 및 RunOnce와 시작 프로그램 폴더의 쓰기 권한을 일반 사용자에게 허용하지 않도록 NTFS 권한을 조정해 자동 실행 경로를 보호한다
+  - title: 상세 설정
+    details: |
+      마지막으로 PowerShell에서 Set-ExecutionPolicy Restricted/AllSigned를 적용해 스크립트 기반 서비스 생성(New-Service)이나 자동 실행 등록이 임의로 수행되지 않도록 제한한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 7045에서 Service Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 서비스·자동실행 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1547
+    url: https://attack.mitre.org/techniques/T1547/
+  - title: Microsoft Event ID 7045
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-7045

@@ -1,0 +1,54 @@
+case_id: CASE-DEPARTED-T1136-4720
+threat_type: DEPARTED
+threat_type_kr: 퇴직자 위협
+technique_id: T1136
+technique_name_kr: 계정 생성
+event_ids: [4720]
+log_fields: |
+  New Account
+  Attributes
+  Subject > Account Name
+log_reason: |
+  새로운 사용자 개체가 생성될 때마다 생성되는 이벤트 로그이다.
+  New Account > Account Name을 봤을 때 "tempuser", "backup", "admin2" 등 의심스러운 이름이 확인되면 악성 계정 생성을 확인할 수 있어서 지속성 확보 가능성을 의심할 수 있다.
+  Attributes > New UAC Value에서 0x15(비활성화+PasswordNotRequired)가 확인되면 의심 백도어 계정 설정을 확인할 수 있어서 권한 상승 행위를 의심할 수 있다.
+  Subject > Account Name을 봤을 때 비관리자 계정으로 Domain Admin 권한 계정 생성이 확인되면 비인가 계정 조작을 확인할 수 있다.
+log_scenario: |
+  net user newuser password /add, PowerShell New-LocalUser로 생성 시 발생한다.
+summary: |
+  공격자는 피해자 시스템에 대한 액세스를 유지하기 위해 계정을 생성할 수 있다.
+  충분한 수준의 액세스가 있는 경우 이러한 계정을 생성하면 시스템에 지속적인 원격 액세스 도구를 배포할 필요가 없는 보조 자격 증명 액세스를 설정하는 데 사용될 수 있다.
+policy_direction: |
+  악성 계정 생성을 막기 위해서는 신규 계정 생성 권한을 관리자·전담 운영 계정으로만 제한하고, 일반 사용자나 서비스 계정이 계정을 추가할 수 있는 구조를 제거해야 한다.
+  공격자는 쉽게 들키지 않는 이름(tempuser, admin2 등)으로 백도어 계정을 만들며, “PasswordNotRequired”, “계정 만료 없음” 같은 약화된 속성을 부여해 지속성을 확보하므로 계정 속성 변경 자체를 강하게 통제해야 한다.
+  또한 고권한 계정(도메인 관리자·로컬 관리자)을 생성할 수 있는 경로를 최소화하여 비인가 계정이 조직 내 어디에서도 생성되지 못하도록 하는 것이 핵심이다.
+  즉, 계정 생성 권한 통제·속성 변경 차단·관리 계정 최소화가 중심 전략이다.
+steps:
+  - title: Active Directory 관련 설정
+    details: |
+      Active Directory 환경에서는 dsa.msc(AD 사용자 및 컴퓨터)의 Delegation of Control 기능을 점검해 계정 생성(Create User) 권한이 오직 Domain Admin/Account Operator 등 최소한의 그룹에만 부여되도록 설정한다
+      
+      로컬 시스템에서는 lusrmgr.msc에서 일반 사용자에게 "사용자 추가" 권한이 부여되지 않도록 하고, 로컬 관리자 그룹도 불필요한 구성원을 제거해 관리자 계정 기반 계정 생성을 차단한다
+      
+      gpedit.msc의 계정 정책 → 암호 정책을 통해 패스워드 복잡성·만료 정책을 강제하여 "PasswordNotRequired"나 계정 만료 없음 설정이 적용되지 못하도록 한다
+  - title: AppLocker 관련 설정
+    details: |
+      마지막으로 AppLocker/WDAC 정책으로 net.exe, powershell.exe(New-LocalUser/Set-LocalUser) 같은 계정 생성 도구의 실행을 관리자만 허용해 악성 계정 생성 경로를 원천적으로 제한한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4720에서 New Account 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 계정 생성 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1136
+    url: https://attack.mitre.org/techniques/T1136/
+  - title: Microsoft Event ID 4720
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4720

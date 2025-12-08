@@ -1,0 +1,55 @@
+case_id: CASE-EXT-T1071-5156
+threat_type: EXT
+threat_type_kr: 의도적 외부 공격자
+technique_id: T1071
+technique_name_kr: (애플리케이션 계층 프로토콜 악용)
+event_ids: [5156]
+log_fields: |
+  Source Address
+  Destination Address
+  Destination Port
+  Protocol
+  Process Name
+log_reason: |
+  WFP가 네트워크 연결 허용 시 기록하는 이벤트로, 악성 프로세스가 외부 C2 서버와 통신할 때 가장 직접적으로 나타난다.
+  동일 프로세스가 짧은 시간 안에 여러 포트/외부 IP로 반복 연결하거나, 평소 연결하지 않는 목적지로 트래픽 발생 시 초기 C2 통신·데이터 유출 시도로 판단할 수 있다.
+log_scenario: |
+  공격자가 HTTP·HTTPS·DNS·SMTP 등 정상 프로토콜로 위장해 C2 서버와 초기 통신을 시도할 때 발생한다.
+  동일 프로세스에서 짧은 시간 안에 여러 외부 IP·포트로 반복 연결되거나, 평소 접속하지 않는 웹·DNS·메일 도메인으로 트래픽이 생성되면 애플리케이션 계층을 악용한 C2 은닉 시도로 판단할 수 있다.
+summary: |
+  공격자는 탐지를 피하기 위해 HTTP·HTTPS·DNS·SMTP 같은 애플리케이션 계층 프로토콜을 사용해 C2 통신을 숨긴다.
+  명령과 결과는 정상 트래픽처럼 보이도록 프로토콜 데이터 안에 포함되며, 내부 피벗에서는 SMB·RDP·SSH 등 일반적으로 쓰이는 프로토콜을 악용해 다른 호스트로 이동한다.
+policy_direction: |
+  애플리케이션 계층 프로토콜 악용을 막기 위해서는 정상적인 HTTPS·DNS·HTTP 트래픽과 악성 C2 트래픽을 구분할 수 있도록 프로세스 기반 네트워크 통제를 강화하는 것이 핵심이다.
+  공격자는 웹 트래픽처럼 보이도록 위장하므로, 내부 시스템이 평상시 통신하지 않는 외부 목적지·도메인·포트로 연결되는 행위를 원천적으로 최소화해야 한다.
+  또한 내부에서 외부로 나가는 통신을 특정 애플리케이션·계정·업무 목적에 맞게 제한하면 악성 프로세스의 초기 C2 연결을 차단할 수 있다.
+  핵심은 “누가 어떤 프로토콜을 통해 외부와 통신할 수 있는가”를 명확히 제한하는 구조이다.
+steps:
+  - title: 상세 설정
+    details: |
+      wf.msc(고급 방화벽)에서 애플리케이션별 아웃바운드 규칙을 설정해 PowerShell, cmd, wscript 등 비정상적 실행 도구가 HTTP·HTTPS·DNS 포트(80·443·53)로 외부와 통신하지 못하도록 차단할 수 있다
+      
+      또한 브라우저·업무 애플리케이션 등 허용된 프로그램만 외부 네트워크로 나갈 수 있도록 “허용 리스트 기반(Allow-list)” 아웃바운드 정책을 구성하는 것이 매우 효과적이다
+      
+      필요 시 DNS는 내부 DNS 서버만 사용하도록 강제하여 프로세스가 외부 DNS로 직접 질의하는 행위를 막을 수 있다
+  - title: 상세 설정
+    details: |
+      마지막으로 불필요한 SMTP·FTP·SSH 클라이언트 기능을 제거하거나 비활성화해 공격자가 일반 프로토콜을 이용해 C2 채널을 임의로 만드는 경로 자체를 줄일 수 있다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 5156에서 Source Address 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (애플리케이션 계층 프로토콜 악용) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1071
+    url: https://attack.mitre.org/techniques/T1071/
+  - title: Microsoft Event ID 5156
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5156

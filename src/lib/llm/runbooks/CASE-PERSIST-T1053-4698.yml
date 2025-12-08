@@ -1,0 +1,61 @@
+case_id: CASE-PERSIST-T1053-4698
+threat_type: PERSIST
+threat_type_kr: 예약 작업·서비스 악용(지속성 확보)
+technique_id: T1053
+technique_name_kr: 예약된 작업
+event_ids: [4698]
+log_fields: |
+  Task Name
+  Task Content
+  Account Name
+log_reason: |
+  Task Name을 봤을 때 "Updater", "WindowsUpdate", "SVCHOST" 등의 의심스러운 이름이 확인되면 악성 예약 작업 생성을 확인할 수 있다.
+  Task Content를 봤을 때 의심 악성 페이로드 등록을 확인할 수 있어서 서비스 악용 행위를 의심할 수 있다.
+  Account Name을 봤을 때 비관리자 계정으로 SYSTEM 권한 예약 작업 생성이 확인되면 권한 상승 지속성을 확인할 수 있다.
+log_scenario: |
+  schtasks /create, PowerShell New-ScheduledTask, 또는 Task Scheduler GUI로 새 예약 작업 생성 시 발생한다.
+  새로운 예약된 작업이 생성될 때마다 로그가 생성된다.
+  정상 시스템 관리 작업에서도 발생하나, 비표준 경로/명령어 패턴으로 공격자 탐지 시 확인해야 하는 로그이다.
+summary: |
+  공격자는 작업 스케줄링 기능을 악용하여 악성 코드의 초기 실행 또는 반복 실행을 용이하게 할 수 있다.
+  모든 주요 운영 체제에는 프로그램이나 스크립트가 지정된 날짜와 시간에 실행되도록 스케줄링하는 유틸리티가 있다.
+  적절한 인증을 충족하는 경우 원격 시스템에서도 작업을 스케줄링할 수 있다.
+  원격 시스템에서 작업을 스케줄링하려면 일반적으로 원격 시스템의 관리자 또는 기타 권한이 있는 그룹의 구성원이어야 한다.
+  공격자는 작업 스케줄링을 사용하여 시스템 시작 시 또는 지속성을 위해 예약된 일정에 따라 프로그램을 실행할 수 있다.
+  이러한 메커니즘은 특정 계정의 컨텍스트에서 프로세스를 실행하는 데 악용될 수도 있다.
+  시스템 바이너리 프록시 실행과 유사하게 , 공격자는 작업 스케줄링을 악용하여 신뢰할 수 있는 시스템 프로세스에서 일회성 실행을 위장할 수 있다.
+policy_direction: |
+  예약 작업 악용을 막기 위해서는 schtasks·PowerShell(New-ScheduledTask)·Task Scheduler를 통해 실행 파일이나 스크립트가 임의 등록되지 못하도록 스케줄링 기능에 대한 권한을 최소화하는 것이 중요하다.
+  공격자는 SYSTEM 또는 관리자 컨텍스트에서 예약 작업을 생성해 지속성을 확보하므로, 자동 실행 경로와 실행 계정의 권한을 제한해 비인가 사용자가 작업을 만들 수 없도록 해야 한다.
+  또한 Task Name·경로 위장을 통한 악성 작업 생성을 막기 위해 스케줄러에서 허용된 작업 목록만 운영하고, 불필요한 작업은 제거하는 운영 절차를 강화해야 한다.
+  즉, 예약 작업 생성 권한 통제·실행 경로 제한·계정 최소화가 핵심이다.
+steps:
+  - title: 상세 설정
+    details: |
+      Task Scheduler에서 “작업 만들기(Create Task)” 권한을 관리자 그룹에만 부여하고, 일반 사용자 계정은 작업 생성·수정·삭제를 수행하지 못하도록 권한을 제한한다
+  - title: AppLocker 설정
+    details: |
+      AppLocker/WDAC 정책을 적용해 schtasks.exe, powershell.exe ScheduledTask 모듈, cmd.exe 등의 실행을 특정 관리자 전용으로 제한해 악성 예약 작업 등록 경로를 차단한다
+      
+      C:\\Windows\\System32\\Tasks 폴더의 NTFS 권한을 점검해 비인가 계정이 예약 작업 파일을 직접 생성하거나 수정할 수 없도록 한다
+  - title: 상세 설정
+    details: |
+      마지막으로 기존에 운영되는 예약 작업을 정기적으로 검토해 의심스러운 작업(업데이터 위장·임시경로 실행·SYSTEM 작업 등)을 제거해 지속성 확보 경로를 축소한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4698에서 Task Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 예약된 작업 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1053
+    url: https://attack.mitre.org/techniques/T1053/
+  - title: Microsoft Event ID 4698
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4698

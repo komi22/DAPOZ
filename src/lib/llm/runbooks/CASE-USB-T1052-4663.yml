@@ -1,0 +1,60 @@
+case_id: CASE-USB-T1052-4663
+threat_type: USB
+threat_type_kr: USB/외장매체 기반 유출
+technique_id: T1052
+technique_name_kr: (물리적 매체를 통한 침투)
+event_ids: [4663]
+log_fields: |
+  Task Category
+  Object Name
+  Account Name
+log_reason: |
+  USB 기반 유출의 실제 행위는 USB가 연결, 민감 파일을 USB 드라이브로 복사를 거친다.
+  이 중에서 물리적 매체 통한 침투의 핵심 “데이터 복사 행위”는 4663(Object Access)가 가장 직접적으로 포착한다.
+  Task Category를 봤을 때 "Removable Storage Device"가 확인되면 USB/외장매체 접근을 확인할 수 있다.
+  Object Name을 봤을 때 E:, F:\ (USB 드라이브) + 대량 .pdf 읽기/쓰기가 확인되면 의심 데이터 복사 유출을 확인할 수 있어서 내부자 유출 행위를 의심할 수 있다.
+  Subject > Account Name을 봤을 때 비관리자 계정으로 민감 파일이 USB 드라이브로의 대량 복사 패턴이 확인되면 외부 유출 가능성을 생각할 수 있다.
+log_scenario: |
+  USB/외장매체에 대한 파일 읽기/쓰기 접근 시 "Task Category: Removable Storage Device"로 생성된다.
+  정상 파일 복사에서도 발생하나, 대량/민감 파일 접근 패턴으로 내부자 데이터 유출 탐지 시 확인해야 하는 핵심 이벤트 로그 중 하나이다.
+  주의해야 할 점은 해당 로그는 Removable Storage Audit 정책 활성화 시 Task Category = Removable Storage device"로 명시가 되므로 GPO "Audit Removable Storage" + 레지스트리 설정(HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Storage\HotPlugSecureOpen=1)이 필요하다.
+summary: |
+  공격자는 이동식 드라이브와 같은 물리적 매체를 통해 데이터 유출을 시도할 수 있다.
+  특정 상황에서는 사용자가 도입한 물리적 매체 또는 장치를 통해 데이터 유출이 발생할 수 있다.
+  이러한 매체에는 외장 하드 드라이브, USB 드라이브, 휴대폰, MP3 플레이어 또는 기타 이동식 저장 및 처리 장치가 포함될 수 있다.
+  물리적 매체 또는 장치는 최종 유출 지점으로 사용되거나 연결이 끊어진 시스템 간 이동에 사용될 수 있다.
+policy_direction: |
+  USB·외장매체 기반 유출을 막기 위해서는 물리적 저장장치 사용 자체를 엄격히 제한하거나, 특정 승인된 장치만 사용할 수 있도록 통제하는 것이 핵심이다.
+  내부자는 USB를 통해 민감 파일을 쉽게 복사할 수 있으므로, 민감 데이터에 대한 읽기·복사 권한을 최소화하고 외장매체로의 대량 파일 복사가 불가능한 구조를 유지해야 한다.
+  또한 외장매체 연결을 통한 데이터 이동 경로를 최소화하고, 데이터가 반드시 안전한 파일 서버나 승인된 공유 위치에서만 이동하도록 강제해야 한다.
+  즉, 장치 통제·권한 최소화·데이터 이동 경로 제한이 중심 전략이다.
+steps:
+  - title: 상세 설정
+    details: |
+      그룹 정책(gpedit.msc)의 컴퓨터 구성 → 관리 템플릿 → 시스템 → 이동식 저장소 액세스(Removable Storage Access)에서 USB 저장장치에 대한 "읽기/쓰기/실행 금지" 정책을 설정해 물리적 매체 사용을 제한할 수 있다
+      
+      기업 환경에서는 Device Installation Restrictions 정책을 사용하여 특정 승인된 USB 장치(허용된 Hardware ID)만 연결되도록 화이트리스트 방식으로 운영한다
+  - title: NTFS 관련 설정
+    details: |
+      파일 서버나 민감 데이터가 존재하는 디렉터리에서는 NTFS 권한을 조정해 일반 사용자에게 복사·끌어오기(Write/Copy) 권한을 부여하지 않도록 구성한다
+  - title: 상세 설정
+    details: |
+      마지막으로 Windows Defender의 “장치 제어(Device Control)” 기능을 활성화해 이동식 저장장치 사용 자체를 차단하거나 특정 사용자만 사용하도록 제한할 수 있다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4663에서 Task Category 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (물리적 매체를 통한 침투) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1052
+    url: https://attack.mitre.org/techniques/T1052/
+  - title: Microsoft Event ID 4663
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4663

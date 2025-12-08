@@ -1,0 +1,52 @@
+case_id: CASE-INSIDER-T1562-1100
+threat_type: INSIDER
+threat_type_kr: 내부자 위협
+technique_id: T1562
+technique_name_kr: "방어력 약화 :Windows 이벤트 로깅 비활성화"
+event_ids: [1100]
+log_fields: |
+  (없음)
+log_reason: |
+  Event Logging Service가 중지될 때 1100 이벤트가 생성되어 로그 서비스 비활성화 행위를 기록한다.
+  1100 발생 후 로그 수집량 급감 패턴 확인 시 의심 Event Logging 완전 비활성화를 확인한다.
+log_scenario: |
+  Windows Event Log 서비스가 net stop eventlog, sc stop eventlog, 또는 레지스트리 변경 후 재부팅으로 중지될 때 생성된다.
+  정상 시스템 종료 시에도 발생하나, 비정상 시간대/비관리자 계정에서의 1100은 방어 무력화(로그 서비스 중지) 탐지 시 확인해야 하는 핵심 이벤트이다.
+  Windows에서는 일반 사용자 계정이 eventlog 서비스를 중지할 수 없으므로 1100이 일반 사용자(Security ID Low Privilege)로 찍히면 보통 권한 상승이 이미 발생한 상태이다.
+summary: |
+  공격자는 탐지 및 감사에 활용될 수 있는 데이터를 제한하기 위해 Windows 이벤트 로깅을 비활성화할 수 있다.
+  공격자는 시스템 전체 로깅을 공격 대상으로 삼거나 특정 애플리케이션의 로깅만 공격 대상으로 삼을 수 있다.
+policy_direction: |
+  이벤트 로깅 비활성화 공격을 막기 위해서는 Event Log 서비스가 임의 중지되지 않도록 서비스 자체의 중지·수정 권한을 엄격히 제한해야 한다.
+  공격자는 권한 상승 후 eventlog 서비스를 중단해 탐지를 무력화하므로, 서비스 설정과 레지스트리 값의 무결성을 보호하는 것이 핵심이다.
+  또한 방어 기능을 임의로 끌 수 있는 관리자 권한 사용을 최소화하고, 보안 구성 변경을 수행할 수 있는 계정을 매우 제한적으로 운영해야 한다.
+  즉, 로그 서비스 보호·권한 최소화·구성 무결성 유지가 방어의 중심 전략이다.
+steps:
+  - title: Event Log 관련 설정
+    details: |
+      services.msc에서 Windows Event Log 서비스(eventlog) 속성을 열고 "시작 유형"을 **자동(Automatic)**으로 설정한 뒤, "서비스 중지/시작 권한"을 Administrators와 SYSTEM으로만 제한한다
+      
+      로컬 보안 정책(gpedit.msc)의 컴퓨터 구성 → Windows 설정 → 보안 설정 → 시스템 서비스에서 Event Log 서비스에 대해 "정책으로 정의된 보안 설정을 적용" 옵션을 활성화해 임의 변경을 차단할 수 있다
+      
+      레지스트리의 HKLM\SYSTEM\\CurrentControlSet\\Services\\EventLog 권한을 점검해 일반 사용자나 불필요한 서비스 계정이 수정하지 못하도록 NTFS/레지스트리 권한을 최소화한다
+  - title: WDAC 관련 설정
+    details: |
+      마지막으로 PowerShell 실행 정책과 WDAC/AppLocker를 활용해 sc.exe 등 서비스 제어 도구를 일반 사용자가 실행하지 못하도록 막아 eventlog 서비스가 무단 중지되는 경로를 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 1100에서 주요 필드 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 방어력 약화 :Windows 이벤트 로깅 비활성화 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1562
+    url: https://attack.mitre.org/techniques/T1562/
+  - title: Microsoft Event ID 1100
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-1100

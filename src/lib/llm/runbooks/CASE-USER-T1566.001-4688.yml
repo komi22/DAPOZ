@@ -1,0 +1,58 @@
+case_id: CASE-USER-T1566.001-4688
+threat_type: USER
+threat_type_kr: 사용자 부주의
+technique_id: T1566.001
+technique_name_kr: (스피어피싱)
+event_ids: [4688]
+log_fields: |
+  New Process Name
+  Creator Process Name
+  Process Command Line
+  Mandatory Level
+log_reason: |
+  사용자가 이메일에서 첨부파일을 열었을 때 생성되는 프로세스를 확인할 수 있어 스피어피싱 첨부파일 실행 여부를 파악하는 핵심 근거가 된다.
+  정상적인 경우에는 Outlook, Chrome, Explorer, Word(Winword.exe), Excel(Excel.exe) 등에서 문서 처리 또는 PDF 뷰어 프로세스가 생성되지만, 비정상적인 경우에는 해당 부모 프로세스에서 직접 cmd.exe, powershell.exe, wscript.exe, mshta.exe, rundll32.exe 등의 실행 프로세스가 생성되는 패턴이 나타난다.
+  또한 CommandLine 정보에 -w hidden, 외부 URL 호출 등이 포함될 경우 악성 페이로드 실행 가능성을 명확히 판단할 수 있어 스피어피싱 기반 초기 침해 탐지에서 4688 이벤트가 가장 신뢰도 높은 지표가 된다.
+log_scenario: |
+  사용자가 수신한 스피어피싱 이메일에서 Word, Excel, PDF, ZIP 등으로 위장된 첨부파일을 열었을 때 발생하며, 문서 내부의 매크로·스크립트가 자동 실행되거나 보안 경고를 우회하도록 유도된 후 악성 코드가 구동되면 동일한 4688 프로세스 생성 로그가 기록된다.
+  Outlook.exe 또는 Winword.exe를 부모로 하여 powershell.exe, wscript.exe, mshta.exe, rundll32.exe 등이 비정상적으로 생성되는 상황에서 높은 탐지 근거가 된다.
+  실행파일(.exe)을 문서 아이콘으로 위장하거나 ZIP 내부 암호를 안내하여 사용자가 직접 실행하도록 유도한 경우에도 동일한 패턴의 4688 로그가 남는다.
+summary: |
+  공격자는 특정 개인이나 조직을 노린 사회공학 기반 전자 공격으로, 악성 첨부파일이 포함된 이메일을 활용해 피해자 시스템에 접근한다.
+  첨부 파일은 Office 문서, PDF, 실행 파일, 압축파일 등 다양한 형태로 위장하며, 사용자가 파일을 열거나 보안 기능을 우회할 경우 악성 페이로드가 실행되거나 취약점이 악용된다.
+  공격자는 신뢰할 만한 발신자를 사칭하고, 파일을 열도록 유도하는 문구나 비밀번호 해제 방법 등을 이메일 본문에 포함시키며, 탐지를 피하기 위해 파일 확장자·아이콘을 조작하기도 한다.
+policy_direction: |
+  스피어피싱 기반 침해를 막기 위해서는 사용자가 열람하는 문서·첨부파일·링크가 임의로 시스템 명령(cmd, powershell, wscript 등)을 실행하지 못하도록 사용자 애플리케이션의 실행 체인을 강하게 통제해야 한다.
+  공격자는 Word·Excel·PDF 뷰어를 통해 매크로나 스크립트를 실행시키므로, 자동 실행 기능(OLE, DDE, 매크로, Active Content)을 최소화해 악성 페이로드의 실행 경로를 차단해야 한다.
+  또한 발신자 조작·확장자 위장 등 사회공학 기법으로 파일 실행을 유도하므로, 보안 정책상 첨부파일 실행 및 다운로드 경로를 제한하고 사용자 환경에서 스크립트 실행 도구의 접근을 최소화해야 한다.
+  핵심은 문서 기반 실행 차단·스크립트 제한·사용자 실행 권한 최소화이다.
+steps:
+  - title: 상세 설정
+    details: |
+      Word·Excel의 매크로 설정을 “서명된 매크로만 허용” 또는 “모두 비활성화”로 설정하고, OLE·DDE 자동 실행 기능을 비활성화해 문서 기반 스크립트·명령 실행 경로를 원천 차단한다
+  - title: AppLocker 설정
+    details: |
+      AppLocker/WDAC 정책을 적용해 Outlook·Word·Excel·PDF 뷰어가 powershell.exe, cmd.exe, wscript.exe, mshta.exe, rundll32.exe 등을 자식 프로세스로 생성하지 못하도록 실행 체인을 제한한다
+      
+      또한 브라우저·메일 클라이언트의 SmartScreen/첨부파일 보호 기능을 활성화해 다운로드된 파일의 즉시 실행을 차단하고 안전한 위치에서만 실행되도록 강제한다
+  - title: 상세 설정
+    details: |
+      마지막으로 사용자 계정의 권한을 일반 사용자 수준으로 유지하여, 악성 문서 실행 시에도 시스템 전체에 대한 영향을 최소화하는 구조를 마련한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 New Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (스피어피싱) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1566.001
+    url: https://attack.mitre.org/techniques/T1566/001/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688

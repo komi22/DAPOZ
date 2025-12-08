@@ -1,0 +1,57 @@
+case_id: CASE-INTEGRITY-T1490-4688
+threat_type: INTEGRITY
+threat_type_kr: 무결성 위협(데이터 조작)
+technique_id: T1490
+technique_name_kr: (시스템 복구 차단-랜섬웨어)
+event_ids: [4688]
+log_fields: |
+  New Process Name
+  Process Command Line
+  Account Name
+log_reason: |
+  New Process Name과 Process Command Line을 봤을 때 vssadmin.exe delete shadows /all /quiet가 확인되면 Volume Shadow Copy 삭제를 확인할 수 있어서 시스템 복구 차단 가능성을 의심할 수 있다.
+  Process Command Line에 bcdedit /set {default} recoveryenabled No, wbadmin delete catalog -quiet가 확인되면 부팅 복구/백업 카탈로그 삭제를 확인할 수 있어서 복구 차단 행위를 의심할 수 있다.
+  Account Name을 봤을 때 비관리자 계정으로 vssadmin/bcdedit 실행이 확인되면 의심 비인가 복구 차단을 확인할 수 있어서 후속 랜섬웨어 공격을 의심할 수 있다.
+log_scenario: |
+  vssadmin.exe, bcdedit.exe, wbadmin.exe가 Volume Shadow Copy 삭제, 백업 카탈로그 삭제, 부팅 복구 비활성화 명령을 실행할 때 생성된다.
+  정상 백업 관리 작업에서도 발생하나, 비정상 시간대/명령어 패턴으로 랜섬웨어 복구 차단 탐지 시 확인해야 하는 로그이다.
+summary: |
+  공격자는 손상된 시스템 복구를 돕기 위해 설계된 서비스를 꺼서 복구를 방해하고 내장 데이터를 삭제하거나 제거할 수 있다.
+  이로 인해 사용 가능한 백업 및 복구 옵션에 대한 액세스가 거부될 수 있다.
+  운영 체제에는 백업 카탈로그, 볼륨 섀도 복사본, 자동 복구 기능 등 손상된 시스템을 복구하는 데 도움이 되는 기능이 포함되어 있을 수 있다.
+  공격자는 데이터 파괴 및 데이터 암호화의 효과를 증폭하기 위해 시스템 복구 기능을 비활성화하거나 삭제할 수 있다.
+  또한, 공격자는 복구 알림을 비활성화하여 백업을 손상시킬 수 있다.
+policy_direction: |
+  시스템 복구 차단은 랜섬웨어가 데이터 암호화 효과를 극대화하기 위해 가장 먼저 수행하는 단계이므로, Volume Shadow Copy·복구 파티션·백업 카탈로그 등 “자체 복구 기능”에 대한 무단 변경을 금지하는 것이 핵심이다.
+  공격자는 vssadmin, bcdedit, wbadmin 같은 내장 도구로 복구 옵션을 비활성화하므로, 이러한 명령 실행 도구의 사용을 엄격히 제한해야 한다.
+  또한 일반 사용자나 서비스 계정이 복구 설정을 변경할 수 있는 여지를 제거하고, OS 복구 기능이 항상 활성 상태로 유지되도록 보호하는 구조가 필요하다.
+  결국 복구 기능 보호·명령 실행 통제·권한 최소화가 복구 차단 방어의 핵심이다.
+steps:
+  - title: AppLocker 관련 설정
+    details: |
+      AppLocker 또는 WDAC 정책을 적용해 vssadmin.exe, bcdedit.exe, wbadmin.exe, wmic.exe 같은 복구 관련 도구가 관리자 그룹 사용자만 실행할 수 있도록 제한한다
+      
+      services.msc에서 **Volume Shadow Copy 서비스(VSS)**와 Windows Backup 서비스의 실행 권한을 Administrators/SYSTEM으로 제한해 비인가 계정이 복구 기능을 수정하지 못하게 한다
+      
+      또한 C:\\Windows\\System32\\config 및 VSS 스냅샷 저장 위치의 NTFS 권한을 점검해 일반 사용자가 복구 데이터에 접근하거나 삭제하는 경로를 사전에 차단한다
+  - title: 상세 설정
+    details: |
+      마지막으로 Windows의 시스템 보호(System Restore) 기능을 켜 두고, 복구 지점을 저장하는 드라이브에 대해 임의 삭제나 설정 변경이 발생하지 않도록 그룹 정책을 통해 보호 구성을 강화한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4688에서 New Process Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (시스템 복구 차단-랜섬웨어) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1490
+    url: https://attack.mitre.org/techniques/T1490/
+  - title: Microsoft Event ID 4688
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4688

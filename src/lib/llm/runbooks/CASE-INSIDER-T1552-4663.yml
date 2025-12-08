@@ -1,0 +1,56 @@
+case_id: CASE-INSIDER-T1552-4663
+threat_type: INSIDER
+threat_type_kr: 내부자 위협
+technique_id: T1552
+technique_name_kr: 보안되지 않은 자격 증명
+event_ids: [4663]
+log_fields: |
+  Object Name
+  Access Request Information
+  Process Name
+log_reason: |
+  SAM, SYSTEM hive 파일이나 민감 레지스트리에 대한 읽기/접근 급증을 포착할 수 있는 이벤트이다.
+  MITRE Detection Strategy DET0307에서 4663을 통한 credential 파일 접근 패턴 탐지로 권고한다.
+  4663은 단순히 요청한 것이 아니라 액세스 권한이 사용되었음을 보여준다.
+  Object Name을 봤을때 C:\Windows\System32\config\SAM/SYSTEM 또는 HKLM\SAM이 확인되면 의심 자격증명 저장소 접근을 확인할 수 있어서 T1552 가능성을 의심할 수 있다.
+  Accesses=ReadData + Process Name을 봤을 때 reg.exe가 같은 SAM 파일에 연속 접근하면 의심 자격증명 열거를 확인할 수 있다.
+log_scenario: |
+  파일/레지스트리 객체에 대한 Handle + ReadData 접근 시 발생하며, 특히 C:\Windows\System32\config\SAM, SYSTEM 파일이나 HKLM\SAM 키 접근에서 다수 생성된다.
+  이때 정상 백업 외 짧은 시간 내 동일 Object에 대한 4663 급증은 내부자 위협 신호이다.
+summary: |
+  공격자는 보안에 취약하게 저장된 자격 증명을 찾아 획득하기 위해 손상된 시스템을 수색할 수 있다.
+  이러한 자격 증명은 일반 텍스트 파일, 운영 체제 또는 애플리케이션 별 저장소, 또는 기타 특수 파일/아티팩트를 포함하여 시스템의 여러 위치에 저장되거나 분실될 수 있다.
+policy_direction: |
+  자격 증명 탈취를 막기 위해서는 SAM·SYSTEM·SECURITY 등 OS 자격 증명 저장소와 애플리케이션의 비밀번호 저장 위치에 대해 최소 권한을 유지하고, 일반 사용자가 읽기 작업을 수행할 수 없도록 통제해야 한다.
+  내부자나 악성 프로세스는 주로 reg.exe 등을 통해 SAM 또는 관련 레지스트리를 열람하므로, 이러한 민감 파일·레지스트리에 대한 접근 경로를 차단하는 것이 핵심이다.
+  또한 평문 자격 증명·스크립트 내 하드코딩 패스워드·Config 파일 기반 비밀번호 저장 등을 제거해 내부자나 공격자가 파일 시스템 탐색만으로 민감 정보를 획득하지 못하도록 해야 한다.
+  즉, 민감 저장소 보호·평문 자격 증명 제거·접근 권한 최소화가 방어의 중심이다.
+steps:
+  - title: NTFS 관련 설정
+    details: |
+      C:\Windows\System32\config\ 경로(SAM, SYSTEM, SECURITY)의 NTFS 권한을 점검해 일반 사용자나 불필요한 서비스 계정에 읽기 권한이 부여되지 않도록 제한한다
+      
+      레지스트리 편집기(regedit)에서 HKLM\SAM, HKLM\SYSTEM 키의 권한을 확인하여 Administrators와 SYSTEM만 접근할 수 있도록 구성한다
+      
+      민감 정보가 포함된 구성 파일(Web.config, ini, 스크립트 파일 등)에 대해 암호 보관 기능(예: DPAPI·Credential Locker) 또는 애플리케이션 내부 암호화 기능을 적용해 평문 비밀번호 저장을 제거한다
+  - title: AppLocker 관련 설정
+    details: |
+      마지막으로 Temp·AppData 등에서 자격 증명이 노출될 수 있는 스크립트·백업 파일을 제거하고, 민감 경로에 임의 실행 파일(reg.exe 등)이 접근하지 못하도록 AppLocker/WDAC을 통해 실행 통제를 적용한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4663에서 Object Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 보안되지 않은 자격 증명 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1552
+    url: https://attack.mitre.org/techniques/T1552/
+  - title: Microsoft Event ID 4663
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4663

@@ -1,0 +1,63 @@
+case_id: CASE-POLICY-T1565-4670
+threat_type: POLICY
+threat_type_kr: 정책 우회 / 구성 변경 공격
+technique_id: T1565
+technique_name_kr: (데이터 조작)
+event_ids: [4670]
+log_fields: |
+  Object Name
+  Object Type
+  Account Name
+  Original Security Descriptor
+  New Security Descriptor
+log_reason: |
+  개체의 권한이 변경될 때 생성되는 로그로 Data Manipulation 및 데이터 무결성 위협을 직접적으로 포착할 수 있는 이벤트 로그이다.
+  Object Name을 봤을 때 로그파일(.log), 데이터베이스(.sqlite), 시스템파일(ntds.dit)에 대한 권한 변경이 확인되면 의심 데이터 조작 권한 변조를 확인할 수 있어서 무결성 위협 가능성을 의심할 수 있다.
+  Permissions Change 섹션에서 Original Security Descriptor와 New Security Descriptor를 봤을 때 비관리자 계정으로 Everyone/Guests 권한 부여가 확인되면 의심 비인가 권한 조작을 확인할 수 있어서 데이터 변조 행위를 의심할 수 있다.
+  Object Type이 File/Key이고 Subject > Account Name을 봤을 때 비관리자 계정으로 민감 객체 권한 변경 패턴이 확인되면 의심 무결성 공격 준비를 의심할 수 있다
+log_scenario: |
+  파일/레지스트리 객체의 ACL/Permissions가 변경될 때 생성되며, 공격자가 데이터 무결성 공격을 위해 민감 파일(.dit) 또는 시스템 파일의 권한을 변경할 때 발생한다.
+  정상 관리 작업에서도 발생하나, 비정상 객체/시간대 패턴으로 데이터 조작 탐지 시 확인해야 하는 로그이다.
+  4663 이벤트 로그는 실제 WriteData/DeleteTree 변조 행위를 기록하므로 같이 확인하면 더 효과적이다.
+summary: |
+  적대자는 외부 결과에 영향을 미치거나 활동을 숨기기 위해 데이터를 삽입, 삭제 또는 조작하여 데이터 무결성을 위협할 수 있다.
+  적대자는 데이터를 조작하여 비즈니스 프로세스, 조직 이해 또는 의사 결정에 영향을 미치려고 시도할 수 있다.
+  수정 유형과 그 영향은 대상 애플리케이션과 프로세스, 그리고 공격자의 목표와 목적에 따라 달라진다.
+  복잡한 시스템의 경우, 공격자는 원하는 효과를 얻기 위해 특별한 전문 지식과 해당 시스템과 관련된 특수 소프트웨어에 대한 접근 권한이 필요할 수 있으며, 이는 일반적으로 장기간의 정보 수집 캠페인을 통해 확보할 수 있다.
+policy_direction: |
+  데이터 조작 위협을 막기 위해서는 로그파일·데이터베이스·시스템 파일 등 무결성이 중요한 객체의 권한을 최소 권한 원칙으로 유지하고, 비인가 계정이 ACL을 변경할 수 있는 경로를 제거해야 한다.
+  공격자는 민감 파일의 권한을 먼저 낮춰 접근권을 확보한 뒤 데이터를 조작하므로, 객체 보안설정 변경 자체를 차단하는 것이 중요하다.
+  또한 Everyone·Guests 같은 광범위 권한 부여가 발생하지 않도록 권한 구성을 정교하게 관리하고, 서비스·애플리케이션 계정은 필요한 권한만 갖도록 제한해야 한다.
+  핵심은 권한 최소화·ACL 변경 통제·비인가 계정의 객체 수정 차단이다.
+steps:
+  - title: 상세 설정
+    details: |
+  - title: NTFS 관련 설정
+    details: |
+      민감 파일(로그, sqlite DB, ntds.dit 등)과 시스템 레지스트리 키의 NTFS/레지스트리 권한을 점검해 Administrators·SYSTEM 이외의 계정에게 쓰기/권한변경 권한이 부여되지 않도록 제한한다
+  - title: icacls 설정
+    details: |
+      icacls나 파일 속성의 보안 탭을 사용해 Everyone/Users/Guests 권한을 제거하거나 읽기 전용으로 축소해 ACL 변조를 차단한다
+      
+      서비스 계정이나 애플리케이션 계정이 불필요한 파일·레지스트리 수정 권한을 갖고 있지 않도록 권한을 재구성하고, AppLocker/WDAC으로 비정상 스크립트·프로세스가 민감 객체를 수정하는 실행 흐름을 차단한다
+  - title: 상세 설정
+    details: |
+      마지막으로 구성 파일(Config, INI, JSON 등)의 무결성 보호를 위해 접근 권한을 읽기 전용으로 유지하고, 수정이 필요한 경우 관리자 승인 경로를 통해서만 변경되도록 운영 절차를 강화한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4670에서 Object Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (데이터 조작) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1565
+    url: https://attack.mitre.org/techniques/T1565/
+  - title: Microsoft Event ID 4670
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4670

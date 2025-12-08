@@ -1,0 +1,57 @@
+case_id: CASE-CRED-T1134-4703
+threat_type: CRED
+threat_type_kr: 크리덴셜 공격
+technique_id: T1134
+technique_name_kr: 토큰 조작
+event_ids: [4703]
+log_fields: |
+  PrivilegeList
+  Process Name
+  SubjectUserName
+  SubjectLogonId
+  TokenElevationType
+log_reason: |
+  공격자가 이미 로그인한 세션 내에서 다른 사용자 토큰을 복제하거나 필요한 특권을 부여·사용해 권한을 상승시키는 과정을 직접적으로 포착할 수 있는 이벤트이다.
+  이벤트 로그의 PrivilegeList 값을 보면SeDebugPrivilege, SeImpersonatePrivilege 등 토큰 조작에 사용되는 고위험 특권이 실제로 사용되었는지 확인할 수 있어, 토큰 변조·가장 여부를 직접적으로 식별할 수 있다.
+  이벤트 로그의 SubjectUserName 항목을 보면 특권을 조정한 주체가 일반 사용자 계정인지, 혹은 cmd.exe, powershell.exe 같은 프로세스 기반으로 동작하는 비정상 행위인지 확인할 수 있다.
+  이벤트 로그의 ProcessName 항목을 보면특권 변경을 수행한 프로세스의 경로·이름을 통해 비표준 위치(Temp, 사용자 폴더 등)에서 실행되는 공격 도구 여부를 판단할 수 있다.
+  이벤트 로그의 SubjectLogonId 값을 보면동일 세션에서 반복적인 특권 상승이 발생하는지를 파악할 수 있어, 로그온 이후 토큰 조작을 여러 차례 수행하는 권한 확장 루틴을 식별할 수 있다.
+log_scenario: |
+  공격자가 토큰 조작에 필요한 SeDebugPrivilege, SeImpersonatePrivilege 등의 고위험 특권을 활성화하거나 사용할 때 발생한다.
+  일반 사용자 환경에서는 거의 사용되지 않는 특권이므로, 비정상 프로세스나 비표준 경로에서 실행된 도구가 특권을 조정할 경우 토큰 복제·가장에 의한 권한 상승 시도로 의심할 수 있다.
+  또한 동일 세션(LogonId)에서 반복적으로 특권 조정이 나타나면 로그인 이후 단계적으로 토큰을 변조하는 공격 흐름에서 발생한 것으로 판단할 수 있다.
+summary: |
+  공격자는 Windows의 액세스 토큰을 조작해 다른 사용자 또는 더 높은 보안 컨텍스트로 가장하여 권한을 우회할 수 있다.
+  토큰을 복사하거나(토큰 도용), 다른 프로세스에 적용하거나, 새 프로세스를 생성하는 과정에서 권한이 상승하며, 이를 통해 관리자에서 시스템 수준까지 확대될 수 있다.
+  토큰 조작은 DuplicateTokenEx, ImpersonateLoggedOnUser 같은 Windows API를 통해 수행되며, 공격자가 도용한 토큰이 원격 시스템 인증 권한을 갖고 있으면 해당 계정으로 원격 시스템까지 접근할 수 있다.
+  또한 표준 사용자도 runas 명령 등으로 가장 토큰을 만들 수 있어, 토큰 변조는 다양한 방식으로 악용될 수 있다.
+policy_direction: |
+  토큰 조작 공격을 방지하기 위해서는 토큰 변조에 사용되는 고위험 특권(SeDebugPrivilege, SeImpersonatePrivilege 등)을 최소화하고, 일반 사용자나 비정상 프로세스가 이러한 특권을 활성화하지 못하도록 권한·그룹 구성 자체를 강화해야 한다.
+  또한 토큰을 생성하거나 가장할 수 있는 관리 도구와 API가 악용되지 않도록 관리자 권한을 제한하고, RunAs·Impersonation·특권 상승이 가능한 모든 경로를 줄이는 것이 중요하다.
+steps:
+  - title: 상세 설정
+    details: |
+      secpol.msc의 로컬 정책 → 사용자 권한 할당에서 "디버그 프로그램(SeDebugPrivilege)", "클라이언트 가장(SeImpersonatePrivilege)"을 실제 필요 사용자·계정만 보유하도록 제한해 토큰 복제를 원천적으로 어렵게 만든다
+      
+      lusrmgr.msc에서 관리자 그룹 구성원을 줄여 비필수 계정이 SYSTEM·관리자 토큰에 접근하지 못하도록 하고, 의심스러운 계정이 관리자 그룹에 포함되어 있는지 정기적으로 점검한다
+  - title: AppLocker 설정
+    details: |
+      AppLocker 또는 WDAC(Windows Defender Application Control) 정책을 통해 Temp·사용자 폴더 등 비표준 경로에서 실행되는 PowerShell·cmd 기반 도구를 제한하여 토큰 변조 도구 실행 자체를 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4703에서 PrivilegeList 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 토큰 조작 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1134
+    url: https://attack.mitre.org/techniques/T1134/
+  - title: Microsoft Event ID 4703
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4703

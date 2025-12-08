@@ -1,0 +1,54 @@
+case_id: CASE-CRED-T1550-4648
+threat_type: CRED
+threat_type_kr: 크리덴셜 공격
+technique_id: T1550
+technique_name_kr: "대체 인증 자료 사용: 해시 전달"
+event_ids: [4648]
+log_fields: |
+  LogonType
+  AuthenticationPackage
+log_reason: |
+  원격, 로컬 상관없이 로그온이 정상적으로 성공하는 경우 기록되기 때문에 거의 모든 PtH 네트워크 이동이 남는 핵심 이벤트이다.
+  따라서 단일 이벤트만으로 로그인(인증)을 확인할 수 있는 최선의 로그라고 판단하였다.
+log_scenario: |
+  해시 기반 인증 명령이 입력되는 경우, LogonUser()의 API가 호출되는 경우, 원격 명령 실행 도구가 해시를 사용해 세션을 만드는 경우, Kerberos 대신 NTLM 해시 인증이 강제로 사용되는 경우 발생한다.
+summary: |
+  공격자는 훔친 비밀번호 해시를 사용하여 "해시 통과"를 통해 환경 내에서 측면 이동을 수행하여 일반적인 시스템 접근 제어를 우회할 수 있다.
+  해시 통과(PtH)는 사용자의 평문 비밀번호에 접근하지 않고도 사용자로 인증하는 방법이다.
+  이 방법은 평문 비밀번호를 요구하는 표준 인증 단계를 우회하여 비밀번호 해시를 사용하는 인증 단계로 바로 진입한다.
+  PtH를 수행할 때, 사용 중인 계정의 유효한 비밀번호 해시는 자격 증명 접근 기술을 사용하여 캡처한다.
+  캡처된 해시는 PtH에서 해당 사용자로 인증하는 데 사용된다.
+  인증이 완료되면 PtH를 사용하여 로컬 또는 원격 시스템에서 작업을 수행할 수 있다.
+  공격자는 훔친 비밀번호 해시를 사용하여 해시를 우회할 수도 있다.
+  PtH와 유사하게, 이는 비밀번호 해시를 사용하여 사용자 인증을 수행하는 동시에, 비밀번호 해시를 사용하여 유효한 Kerberos 티켓을 생성한다.
+policy_direction: |
+  Hash 공격을 막기 위해서는 해시 기반 인증 자체가 악용되지 않도록 자격 증명 저장소(LSASS, Kerberos 캐시, NTLM 해시)를 보호하고, NTLM 사용을 최소화하며 가능한 Kerberos 기반 인증으로 강제하는 것이 중요하다.
+  또한 관리자 계정을 최소화하고, 동일 계정의 원격 인증·측면 이동 경로를 제한해 공격자가 탈취한 해시를 재사용할 기회를 줄여야 한다.
+steps:
+  - title: 상세 설정
+    details: |
+      gpedit.msc의 컴퓨터 구성 → Windows 설정 → 보안 설정 → 로컬 정책 → 보안 옵션에서 "Network security: LAN Manager authentication level"을 "NTLMv2 응답만 보내기 / LM & NTLM 거부"로 설정해 NTLM 기반 해시 인증을 최대한 차단한다
+  - title: Credential Guard 관련 설정
+    details: |
+      추가로 컴퓨터 구성 → 관리 템플릿 → 시스템 → Device Guard에서 Credential Guard를 활성화하여 NTLM 해시와 Kerberos 티켓을 격리 보호한다
+  - title: 상세 설정
+    details: |
+      마지막으로 lusrmgr.msc에서 관리자 그룹 구성원을 최소화하여 공격자가 탈취한 해시로 측면 이동을 수행하기 어렵게 만든다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4648에서 LogonType 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 대체 인증 자료 사용: 해시 전달 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1550
+    url: https://attack.mitre.org/techniques/T1550/
+  - title: Microsoft Event ID 4648
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4648

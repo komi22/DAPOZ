@@ -1,0 +1,55 @@
+case_id: CASE-DEPARTED-T1078-4624
+threat_type: DEPARTED
+threat_type_kr: 퇴직자 위협
+technique_id: T1078
+technique_name_kr: (유효 계정)
+event_ids: [4624]
+log_fields: |
+  Account Name
+  Logon Type
+  Source Network Address
+log_reason: |
+  Account Name을 봤을 때 퇴직자 계정이 확인되면 유효 계정 남용을 확인할 수 있어서 퇴직자 위협 가능성을 의심할 수 있다.
+  Logon Type을 봤을 때 Type 3(Network), 10(RemoteInteractive)에서 퇴직자 계정 로그온이 확인되면 원격 접근 남용을 확인할 수 있어서 내부자 유출 행위를 의심할 수 있다.
+  Source Network Address를 봤을 때 회사 외부 IP 또는 퇴직 후 등록되지 않은 위치에서 4624가 확인되면 외부에서 계정 악용을 의심할 수 있다.
+log_scenario: |
+  모든 성공적인 로그온 시 생성되며, 퇴직자 계정이 VPN/RDP/도메인 로그온으로 재접속할 때 발생할 수 있다.
+  정상 사용자 로그온에서도 발생하나, 퇴직자 계정/비정상 시간대/위치 패턴으로 내부자 위협 탐지 시 확인해야 하는 로그이다.
+summary: |
+  공격자는 기존 계정의 자격 증명을 획득하여 초기 접근, 지속성, 권한 상승 또는 방어 회피를 획득하는 수단으로 악용할 수 있다.
+  손상된 자격 증명은 네트워크 내 시스템의 다양한 리소스에 적용된 접근 제어를 우회하는 데 사용될 수 있으며, VPN, Outlook Web Access, 네트워크 장치, 원격 데스크톱과 같은 원격 시스템 및 외부에서 사용 가능한 서비스에 대한 지속적인 접근에도 사용될 수 있다.
+  손상된 자격 증명은 공격자에게 특정 시스템에 대한 권한을 증가시키거나 네트워크의 제한된 영역에 대한 접근 권한을 부여할 수도 있다.
+policy_direction: |
+  퇴직자 계정 악용을 막기 위해서는 계정 라이프사이클 관리가 철저해야 하며, 퇴직·이동·휴직 등의 상태 변화가 발생하면 즉시 계정 비활성화 또는 삭제가 이루어져야 한다.
+  공격자는 이미 존재하는 ‘유효한 계정’을 사용해 VPN·RDP·도메인 로그온 등 정상적인 인증 경로로 침투하므로, 계정 사용 범위·시간·접속 위치를 제한하여 악용 가능성을 줄여야 한다.
+  또한 외부 접속이 가능한 모든 시스템(VPN·메일·RDP 등)에 대해 MFA 적용과 강력한 인증 정책을 유지하면 계정 탈취 위험을 크게 낮출 수 있다.
+  핵심은 계정 상태 관리·접속 경로 제한·강화된 인증 체계 구축이다.
+steps:
+  - title: Active Directory 관련 설정
+    details: |
+      Active Directory 환경에서는 AD 사용자 및 컴퓨터(dsa.msc)에서 퇴직자 계정을 즉시 비활성화(Disable) 하거나 OU를 별도로 구성해 자동 만료 정책을 적용한다
+      
+      lusrmgr.msc(로컬 사용자/그룹)에서는 로컬 계정 중 필요 없는 계정을 모두 비활성화해 내부 시스템 접근 경로를 제거한다
+      
+      Windows VPN·RDP 환경에서는 MFA(다단계 인증)를 활성화해 계정이 남아 있어도 외부에서 임의 사용이 불가능하도록 한다
+  - title: 상세 설정
+    details: |
+      마지막으로 gpedit.msc의 보안 옵션 → 계정 잠금 정책에서 잠금 임계값과 재시도 제한을 설정해 계정 탈취 후 무단 로그온 시도를 자동으로 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 4624에서 Account Name 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - (유효 계정) 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1078
+    url: https://attack.mitre.org/techniques/T1078/
+  - title: Microsoft Event ID 4624
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4624

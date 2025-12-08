@@ -1,0 +1,56 @@
+case_id: CASE-CRED-T1570-5145
+threat_type: CRED
+threat_type_kr: 크리덴셜 공격
+technique_id: T1570
+technique_name_kr: 도구 전송
+event_ids: [5145]
+log_fields: |
+  ShareName
+  Relative Target Name
+  AccessMask
+  Source Address
+log_reason: |
+  원격 시스템에 파일이 실제로 생성되거나 쓰기(Write/Append) 작업이 발생할 때 기록되는 가장 직접적인 도구 전송 탐지 이벤트이다.
+  ShareName 항목을 통해 원격지의 C$, ADMIN$ 등 관리 공유에 접근했는지 확인할 수 있다.
+  RelativeTargetName 값으로 특정 파일이 원격 장비의 어느 경로에 생성되었는지 파악할 수 있어 도구 복사 여부를 정확히 확인할 수 있다.
+  AccessMask에서 WriteData, AppendData 등 쓰기 작업이 확인되면 공격자가 도구를 업로드한 명확한 흔적으로 판단할 수 있다.
+log_scenario: |
+  공격자가 SMB/Windows 관리자 공유(C$, ADMIN$ 등)를 통해 원격 시스템에 파일을 복사하거나 새 파일을 생성할 때 발생하는 핵심 로그이다.
+  (scp/sftp 등 SSH 기반 복사에는 해당되지 않는다.
+  ) 침해된 환경 내부에서 공격 도구나 스크립트를 다른 시스템으로 전송하고 스테이징할 때 반복적으로 나타나며, WriteData·AppendData와 같은 쓰기 작업이 확인되면 원격 파일 업로드가 실제로 수행된 것으로 판단할 수 있다.
+summary: |
+  공격자는 침해된 환경 내부에서 공격 도구나 파일을 한 시스템에서 다른 시스템으로 전송해 스테이징할 수 있다.
+  이를 위해 SMB/Windows 관리자 공유, RDP 기반 파일 전송 등 기본 제공되는 파일 공유 프로토콜을 활용하여 내부 측면 이동을 지원한다.
+  또한 scp, rsync, sftp, ftp 같은 일반적인 전송 도구나 Dropbox·OneDrive 같은 동기화 서비스를 이용해 여러 시스템 간 파일을 복사하는 방식도 사용될 수 있다.
+policy_direction: |
+  도구 전송 공격을 막기 위해서는 내부 시스템 간 파일 복사가 가능한 SMB 관리자 공유(C$, ADMIN$ 등)와 원격 파일 전송 프로토콜을 최소화하거나 접근 대상을 제한해야 한다.
+  또한 쓰기 작업(WriteData, AppendData)이 실제로 수행되는 공유 폴더를 감시해 비정상적인 파일 업로드 패턴을 탐지하는 것이 중요하다.
+  공격자가 스테이징용 도구를 확산시키지 못하도록 계정 권한을 최소화하고, 원격 파일 전송을 수행할 수 있는 인증 경로와 공유 권한을 세밀하게 통제해야 한다.
+  전체적으로는 공유 리소스 접근 제한, 계정 권한 축소, 파일 쓰기 이벤트 모니터링이 방어의 핵심이다.
+steps:
+  - title: 상세 설정
+    details: |
+      fsmgmt.msc에서 공유 폴더 관리를 열어 C$, ADMIN$, IPC$ 등의 기본 관리자 공유가 불필요한 경우 비활성화하거나, 접근 가능한 관리자 계정을 엄격히 제한한다
+      
+      wf.msc(Windows 방화벽)에서 SMB(445), FTP, SFTP 등 전송 관련 포트를 특정 내부대역 또는 관리 서버만 허용하도록 규칙을 제한한다
+  - title: 상세 설정
+    details: |
+      마지막으로 공유 폴더의 권한에서 “쓰기(Write)” 권한을 필요 최소 계정만 보유하도록 조정해 공격자가 원격지에 도구를 업로드하는 경로 자체를 차단한다
+operations_guidance: |
+  ## 모니터링 팁
+  - Event ID 5145에서 ShareName 필드를 주의 깊게 확인하세요.
+  - 비정상적인 패턴이나 짧은 시간 내 반복적인 접근을 모니터링하세요.
+  - 도구 전송 기법과 관련된 활동을 주의 깊게 관찰하세요.
+
+  ## 오탐 가능성
+  - 정상적인 시스템 관리 작업에서도 해당 이벤트가 발생할 수 있습니다.
+  - 예약된 작업이나 백업 프로세스에 의한 정상 활동을 구분해야 합니다.
+
+  ## 대응 방법
+  - 관리자 작업은 사전 승인 프로세스를 적용하세요.
+  - 예약된 작업은 화이트리스트로 등록하세요.
+references:
+  - title: MITRE ATT&CK - T1570
+    url: https://attack.mitre.org/techniques/T1570/
+  - title: Microsoft Event ID 5145
+    url: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5145
