@@ -1900,10 +1900,75 @@ app.post('/api/keycloak/execute', async (req, res) => {
   }
 })
 
+// ========================================
+// LLM 챗봇 API 라우트 (추가)
+// ========================================
+const llmRouter = require('./routes/llm.cjs')
+app.use('/api/llm', llmRouter)
+
+/**
+ * LLM Runbooks 자동 인덱싱 함수
+ * 서버 시작 시 ChromaDB 연결 확인 후 인덱싱 상태 체크
+ */
+async function autoIndexRunbooks() {
+  try {
+    const { testConnection, getCollectionCount, deleteCollection } = require('./llm/vectorStore.cjs')
+    const { loadRunbookDocuments } = require('./llm/documentLoader.cjs')
+    const { addDocuments } = require('./llm/vectorStore.cjs')
+
+    const isConnected = await testConnection()
+    if (!isConnected) {
+      console.log('⚠️  ChromaDB 연결 실패. 자동 인덱싱을 건너뜁니다.')
+      return
+    }
+
+    const count = await getCollectionCount()
+    
+    if (count === 0) {
+      console.log('📚 Runbooks 자동 인덱싱 시작...')
+      
+      const documents = loadRunbookDocuments()
+      
+      if (documents.length > 0) {
+        try {
+          await addDocuments(documents)
+          const uniqueFiles = new Set(documents.map(doc => doc.metadata.source))
+          console.log(`✓ Runbooks 자동 인덱싱 완료: ${uniqueFiles.size}개 파일 → ${documents.length}개 청크`)
+        } catch (error) {
+          if (error.message && error.message.includes('422')) {
+            console.log('⚠️  인덱싱 실패 (기존 collection 스키마 불일치). Collection 삭제 후 재시도...')
+            try {
+              await deleteCollection()
+              await addDocuments(documents)
+              const uniqueFiles = new Set(documents.map(doc => doc.metadata.source))
+              console.log(`✓ Runbooks 자동 인덱싱 완료: ${uniqueFiles.size}개 파일 → ${documents.length}개 청크`)
+            } catch (retryError) {
+              console.error('❌ Collection 삭제 후 재인덱싱 실패:', retryError.message)
+            }
+          } else {
+            throw error
+          }
+        }
+      } else {
+        console.log('⚠️  인덱싱할 문서가 없습니다.')
+      }
+    } else {
+      console.log(`✓ Runbooks 이미 인덱싱됨 (${count}개 청크)`)
+    }
+  } catch (error) {
+    console.error('❌ Runbooks 자동 인덱싱 실패:', error.message)
+  }
+}
+
 // 서버 시작
 app.listen(PORT, () => {
   saveLog('info', `백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
   console.log(`백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
+  
+  // 서버 시작 후 자동 인덱싱 (10초 후, ChromaDB 준비 시간 고려)
+  setTimeout(() => {
+    autoIndexRunbooks()
+  }, 10000)
 })
 
 // 프로세스 종료 시 로그 저장

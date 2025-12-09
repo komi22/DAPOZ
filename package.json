@@ -25,7 +25,15 @@
     "@lumi.new/sdk": "0.2.1",
     "concurrently": "^8.2.2",
     "recharts": "^3.2.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@langchain/core": "^0.3.0",
+    "@langchain/community": "^0.3.0",
+    "@langchain/openai": "^0.3.0",
+    "@langchain/textsplitters": "^0.3.0",
+    "chromadb": "^1.8.1",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.20.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

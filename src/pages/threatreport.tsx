@@ -7,8 +7,10 @@ import {
   Info,
   ListChecks,
   Search,
-  BookOpen
+  BookOpen,
+  MessageCircle
 } from 'lucide-react'
+import ThreatChatbot from '../components/ThreatChatbot'
 
 type Severity = 'low' | 'medium' | 'high'
 
@@ -769,6 +771,8 @@ const ThreatReportPage: React.FC = () => {
   const [storedResult, setStoredResult] = useState<ThreatReportStoredResult | null>(null)
   const [matchedThreats, setMatchedThreats] = useState<ThreatGuide[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+  const [selectedThreat, setSelectedThreat] = useState<ThreatGuide | null>(null)
 
   useEffect(() => {
     try {
@@ -1107,6 +1111,20 @@ const ThreatReportPage: React.FC = () => {
                           {threat.improvement}
                         </p>
                       </div>
+
+                      {/* AI 챗봇 질문 버튼 */}
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setSelectedThreat(threat)
+                            setIsChatbotOpen(true)
+                          }}
+                          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all text-sm font-medium"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>이 위협에 대해 AI 챗봇에게 질문하기</span>
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -1115,6 +1133,28 @@ const ThreatReportPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* 챗봇 팝업 */}
+      <ThreatChatbot
+        isOpen={isChatbotOpen}
+        onClose={() => setIsChatbotOpen(false)}
+        selectedThreat={selectedThreat ? {
+          technique_id: selectedThreat.mitreId,
+          threat_type: selectedThreat.category,
+          threat_type_kr: selectedThreat.category,
+          technique_name_kr: selectedThreat.threatType,
+          event_ids: [selectedThreat.eventId]
+        } : null}
+      />
+
+      {/* 우하단 고정 챗봇 버튼 */}
+      <button
+        onClick={() => setIsChatbotOpen(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110"
+        title="위협 개선 AI 챗봇 열기"
+      >
+        <MessageCircle className="w-6 h-6" />
+      </button>
     </div>
   )
 }
