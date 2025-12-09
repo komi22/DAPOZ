@@ -10,7 +10,7 @@ const http = require('http')
 const crypto = require('crypto')
 
 
-// 콘솔 프린트 시 문자열/배열 길이 제한 해제 (truncate 방지)
+// 콘솔 프린트 시 문자열/배열 길이 제한 해제
 util.inspect.defaultOptions.maxStringLength = null
 util.inspect.defaultOptions.maxArrayLength = null
 util.inspect.defaultOptions.depth = null
@@ -19,7 +19,6 @@ util.inspect.defaultOptions.breakLength = 120
 const app = express()
 const PORT = 3001
 
-// CORS 설정
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://61.72.143.248:5173'],
   credentials: true
@@ -46,7 +45,7 @@ const saveLog = (level, message, error = null) => {
     }
     
     logs.unshift(logEntry)
-    logs = logs.slice(0, 100) // 최근 100개만 유지
+    logs = logs.slice(0, 100)
     
     fs.writeFileSync(logFile, JSON.stringify(logs, null, 2))
   } catch (err) {
@@ -55,8 +54,6 @@ const saveLog = (level, message, error = null) => {
   
   console.log(`[${logEntry.timestamp}] [${level.toUpperCase()}] ${message}`)
   if (error) {
-    // 객체 그대로 찍으면 util.inspect가 잘라버림 → 반드시 '문자열'로 출력
-    // error는 { error: Error, stdout: string, stderr: string } 형태일 수 있음
     const printable =
       typeof error === 'string'
         ? error
@@ -75,7 +72,7 @@ const execPromise = (command) => {
       command,
       {
         encoding: 'utf8',
-        maxBuffer: 1024 * 1024 * 200, // 200MB까지 수용 (필요시 조정)
+        maxBuffer: 1024 * 1024 * 200,
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -88,7 +85,7 @@ const execPromise = (command) => {
   })
 }
 
-// Promise 기반 spawn 함수 (인자 배열 안전 전달)
+// Promise 기반 spawn 함수 
 const spawnPromise = (cmd, args, options = {}) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { shell: false, ...options })
@@ -104,8 +101,7 @@ const spawnPromise = (cmd, args, options = {}) => {
   })
 }
 
-
-// 헬스체크 엔드포인트
+// 헬스 체크 엔드포인트
 app.get('/api/health', (req, res) => {
   saveLog('info', '헬스체크 요청 수신')
   res.json({ 
@@ -153,7 +149,7 @@ app.get('/api/docker/status', async (req, res) => {
     const psCommand = 'docker ps'
     const psResult = await execPromise(psCommand)
     
-    // docker stats 조회 (실행 중인 컨테이너만)
+    // docker stats 조회
     const statsCommand = 'docker stats --no-stream --format "{{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"'
     let statsResult = { stdout: '' }
     try {
@@ -187,7 +183,7 @@ const parseDockerPsOutput = (psOutput, statsOutput) => {
     // docker ps 출력을 라인별로 분할
     const lines = psOutput.split('\n').filter(line => line.trim())
     
-    // 헤더 라인 제거 (CONTAINER ID   IMAGE   COMMAND ...)
+    // 헤더 라인 제거
     const dataLines = lines.slice(1)
     
     // docker stats 출력 파싱
@@ -221,7 +217,6 @@ const parseDockerPsOutput = (psOutput, statsOutput) => {
         // 포트 매핑 파싱
         const portMappings = []
         if (ports && ports !== '') {
-          // 포트 형식: 0.0.0.0:1280->1280/tcp, [::]:1280->1280/tcp
           const portMatches = ports.match(/(\d+\.\d+\.\d+\.\d+:)?(\d+)->(\d+)\/(\w+)/g)
           if (portMatches) {
             portMatches.forEach(portMatch => {
@@ -238,7 +233,6 @@ const parseDockerPsOutput = (psOutput, statsOutput) => {
             })
           }
         }
-        
         containers.push({
           id: containerId,
           name: name,
@@ -288,7 +282,6 @@ const parseDockerPsOutput = (psOutput, statsOutput) => {
     return []
   }
 }
-
 // SaltStack 키 목록 조회
 app.get('/api/salt/keys', async (req, res) => {
   try {
@@ -299,15 +292,12 @@ app.get('/api/salt/keys', async (req, res) => {
     
     const result = await execPromise(command)
     saveLog('info', `Salt 명령어 실행 성공: ${command}`, result)
-    
     // 키 목록 파싱
     const output = result.stdout
     const keys = []
-    
     if (output) {
       const lines = output.split('\n')
       let currentStatus = null
-      
       for (const line of lines) {
         const trimmed = line.trim()
         if (trimmed.includes('Accepted Keys:')) {
@@ -328,7 +318,6 @@ app.get('/api/salt/keys', async (req, res) => {
     }
     
     saveLog('info', `SaltStack 키 목록 조회 성공: ${keys.length}개 키`)
-    
     res.json({
       data: keys,
       raw: result.stdout
@@ -393,7 +382,7 @@ app.get('/api/salt/targets', async (req, res) => {
   }
 })
 
-// 데이터 통제만 안전하게: SaltStack 명령어 실행 - 출력을 그대로 반환
+// 데이터 통제만 안전하게 SaltStack 명령어 실행 
 app.post('/api/salt/execute', async (req, res) => {
   try {
     const { command, targets } = req.body
@@ -595,10 +584,7 @@ app.post('/api/salt/keys/delete', async (req, res) => {
   }
 })
 
-// ============================================
-// 디바이스 필라 관련 코드 시작
-// ============================================
-
+// 디바이스 필라
 const execPromiseWithTimeout = (command, timeout = 60000) => {
   return new Promise((resolve, reject) => {
     const child = exec(command, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
@@ -751,7 +737,6 @@ const checkMinionConnection = async (target, maxRetries = 1) => {
 }
 
 const DEPARTMENT_FILE = path.join(__dirname, 'device_departments.json')
-
 function readDepartments() {
   try {
     if (fs.existsSync(DEPARTMENT_FILE)) {
@@ -1543,10 +1528,8 @@ function mountDeviceFeatureSet(app, { protect = false } = {}) {
   mountDevicePillar(app)
   mountMaintenanceAPI(app)
 }
+// ============================================
 
-// ============================================
-// 디바이스 필라 관련 코드 끝
-// ============================================
 
 // Docker 컨테이너 상태 조회 (수정된 파싱)
 app.get('/api/docker/containers/:containerName/stats', async (req, res) => {
@@ -1786,12 +1769,11 @@ app.get('/api/keycloak/users', async (req, res) => {
   }
 })
 
-// Keycloak 렐름 목록 조회 - Keycloak 24.x 경로 수정
+// Keycloak 렐름 목록 조회
 app.get('/api/keycloak/realms', async (req, res) => {
   try {
     saveLog('info', 'Keycloak 렐름 목록 조회 시작')
     
-    // Keycloak 24.x 버전의 올바른 경로와 URL 사용 (auth 경로 제거)
     const command = 'docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get realms --server http://localhost:8080'
     saveLog('info', `Keycloak 명령어 실행: ${command}`)
     
@@ -1821,13 +1803,11 @@ app.get('/api/keycloak/realms', async (req, res) => {
   }
 })
 
-// Keycloak 이벤트 로그 조회 - 실제 접근 로그
+// Keycloak 이벤트 로그 조회
 app.get('/api/keycloak/events', async (req, res) => {
   try {
     saveLog('info', 'Keycloak 이벤트 로그 조회 시작')
     
-    // Keycloak 24.x 버전의 이벤트 조회 명령어
-    // 최근 50개의 이벤트를 가져옴
     const command = 'docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get events --server http://localhost:8080 --realm master --max 50'
     saveLog('info', `Keycloak 이벤트 조회 명령어 실행: ${command}`)
     
@@ -1869,7 +1849,7 @@ app.get('/api/keycloak/events', async (req, res) => {
   }
 })
 
-// Keycloak 명령어 실행 - Keycloak 24.x 경로 수정
+// Keycloak 명령어 실행
 app.post('/api/keycloak/execute', async (req, res) => {
   try {
     const { command } = req.body
@@ -1878,7 +1858,6 @@ app.post('/api/keycloak/execute', async (req, res) => {
       return res.status(400).json({ error: '명령어가 필요합니다' })
     }
     
-    // Keycloak 24.x 버전의 올바른 경로와 URL 사용 (auth 경로 제거)
     const fullCommand = `docker exec -i keycloak /opt/keycloak/bin/kcadm.sh ${command} --server http://localhost:8080`
     saveLog('info', `Keycloak 명령어 실행: ${fullCommand}`)
     
@@ -1900,75 +1879,10 @@ app.post('/api/keycloak/execute', async (req, res) => {
   }
 })
 
-// ========================================
-// LLM 챗봇 API 라우트 (추가)
-// ========================================
-const llmRouter = require('./routes/llm.cjs')
-app.use('/api/llm', llmRouter)
-
-/**
- * LLM Runbooks 자동 인덱싱 함수
- * 서버 시작 시 ChromaDB 연결 확인 후 인덱싱 상태 체크
- */
-async function autoIndexRunbooks() {
-  try {
-    const { testConnection, getCollectionCount, deleteCollection } = require('./llm/vectorStore.cjs')
-    const { loadRunbookDocuments } = require('./llm/documentLoader.cjs')
-    const { addDocuments } = require('./llm/vectorStore.cjs')
-
-    const isConnected = await testConnection()
-    if (!isConnected) {
-      console.log('⚠️  ChromaDB 연결 실패. 자동 인덱싱을 건너뜁니다.')
-      return
-    }
-
-    const count = await getCollectionCount()
-    
-    if (count === 0) {
-      console.log('📚 Runbooks 자동 인덱싱 시작...')
-      
-      const documents = loadRunbookDocuments()
-      
-      if (documents.length > 0) {
-        try {
-          await addDocuments(documents)
-          const uniqueFiles = new Set(documents.map(doc => doc.metadata.source))
-          console.log(`✓ Runbooks 자동 인덱싱 완료: ${uniqueFiles.size}개 파일 → ${documents.length}개 청크`)
-        } catch (error) {
-          if (error.message && error.message.includes('422')) {
-            console.log('⚠️  인덱싱 실패 (기존 collection 스키마 불일치). Collection 삭제 후 재시도...')
-            try {
-              await deleteCollection()
-              await addDocuments(documents)
-              const uniqueFiles = new Set(documents.map(doc => doc.metadata.source))
-              console.log(`✓ Runbooks 자동 인덱싱 완료: ${uniqueFiles.size}개 파일 → ${documents.length}개 청크`)
-            } catch (retryError) {
-              console.error('❌ Collection 삭제 후 재인덱싱 실패:', retryError.message)
-            }
-          } else {
-            throw error
-          }
-        }
-      } else {
-        console.log('⚠️  인덱싱할 문서가 없습니다.')
-      }
-    } else {
-      console.log(`✓ Runbooks 이미 인덱싱됨 (${count}개 청크)`)
-    }
-  } catch (error) {
-    console.error('❌ Runbooks 자동 인덱싱 실패:', error.message)
-  }
-}
-
 // 서버 시작
 app.listen(PORT, () => {
   saveLog('info', `백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
   console.log(`백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
-  
-  // 서버 시작 후 자동 인덱싱 (10초 후, ChromaDB 준비 시간 고려)
-  setTimeout(() => {
-    autoIndexRunbooks()
-  }, 10000)
 })
 
 // 프로세스 종료 시 로그 저장
@@ -2021,7 +1935,7 @@ function buildEsQuery() {
 
 
 /**
- * 방법 A) Node 내부에서 HTTPS 호출 (권장) — self-signed 허용
+ * 방법 A) Node 내부에서 HTTPS 호출 — self-signed 허용
  *  - 외부 패키지(node-fetch/axios) 불필요
  */
 function callElasticsearchInternal(queryObj) {
@@ -2037,7 +1951,7 @@ function callElasticsearchInternal(queryObj) {
         'Content-Type': 'application/json; charset=UTF-8',
         'Content-Length': Buffer.byteLength(postData)
       },
-      agent: new https.Agent({ rejectUnauthorized: false }) // <- self-signed 허용
+      agent: new https.Agent({ rejectUnauthorized: false }) // self-signed 허용
     }
 
     const req = https.request(options, (res) => {
@@ -2078,9 +1992,7 @@ async function callElasticsearchByCurl(queryObj) {
   }
 }
 
-/**
- * 위험도 테이블
- */
+//위험도 테이블
 const RISK_TABLE = {
   '01_user_negligence': 0.6,
   '02_external_attacker': 0.6,
@@ -2097,15 +2009,13 @@ const RISK_TABLE = {
 }
 const NORMALIZER = 6.24 // 합산/정규화 분모
 
-// ===================== 진단 평가 라우터 =====================
+// 진단 평가 라우터
 const diagnosisRouter = express.Router();
 
 diagnosisRouter.get('/ping', (_req, res) => {
   res.json({ ok: true, ts: Date.now() });
 });
-
-
-/** 방법 A: Node HTTPS(셀프사인 허용) */
+// 방법 A: Node HTTPS
 function callElasticsearchInternal(queryObj) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(queryObj);
@@ -2133,8 +2043,7 @@ function callElasticsearchInternal(queryObj) {
     req.end();
   });
 }
-
-/** 방법 B: curl fallback (윈도우 호환, 인용부호 이슈 회피) */
+// 방법 B: curl fallback
 async function callElasticsearchByCurl(queryObj) {
   const tmpFile = path.join(__dirname, `es_query_${Date.now()}.json`);
   fs.writeFileSync(tmpFile, JSON.stringify(queryObj), 'utf8');
@@ -2148,7 +2057,6 @@ async function callElasticsearchByCurl(queryObj) {
     try { fs.unlinkSync(tmpFile); } catch {}
   }
 }
-
 diagnosisRouter.post('/evaluate', async (req, res) => {
   try {
     saveLog('info', '진단 평가 분석 시작 (internal HTTPS)');
@@ -2202,6 +2110,33 @@ diagnosisRouter.post('/evaluate', async (req, res) => {
 
     saveLog('info', `진단 평가 분석 완료: detected=${detected.join(',')}, threatScore=${threatScore}, zeroTrustScore=${zeroTrustScore}`);
 
+    // 진단 결과 히스토리 저장
+    try {
+      const historyFile = path.join(__dirname, 'diagnosis_history.json');
+      let history = [];
+      
+      if (fs.existsSync(historyFile)) {
+        const data = fs.readFileSync(historyFile, 'utf8');
+        history = JSON.parse(data);
+      }
+      
+      const historyEntry = {
+        timestamp: new Date().toISOString(),
+        zeroTrustScore,
+        checklistScore,
+        threatScore,
+        detectedScenarios: detected,
+        maturity: { level, meaning }
+      };
+      
+      history.unshift(historyEntry);
+      history = history.slice(0, 20); // 최근 20개만 유지
+      
+      fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
+    } catch (err) {
+      saveLog('error', '진단 결과 히스토리 저장 실패', err);
+    }
+
     res.json({
       success: true,
       detectedScenarios: detected,
@@ -2220,14 +2155,47 @@ diagnosisRouter.post('/evaluate', async (req, res) => {
   }
 });
 
+// 진단 결과 히스토리 조회 엔드포인트
+diagnosisRouter.get('/history', (req, res) => {
+  try {
+    const historyFile = path.join(__dirname, 'diagnosis_history.json');
+    let history = [];
+    
+    if (fs.existsSync(historyFile)) {
+      const data = fs.readFileSync(historyFile, 'utf8');
+      history = JSON.parse(data);
+    }
+    
+    // 최근 20개만 반환
+    const recentHistory = history.slice(0, 20).map(entry => ({
+      timestamp: entry.timestamp,
+      zeroTrustScore: entry.zeroTrustScore,
+      date: new Date(entry.timestamp).toLocaleDateString('ko-KR', { 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }));
+    
+    res.json({
+      success: true,
+      history: recentHistory
+    });
+  } catch (error) {
+    saveLog('error', '진단 결과 히스토리 조회 실패', error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || '히스토리 조회 실패',
+      history: []
+    });
+  }
+});
 // 라우터 마운트
 app.use('/api/diagnosis', diagnosisRouter);
-// =================== 진단 평가 라우터 끝 ===================
 
 
-// ============================================
-// [엔드포인트] 스케줄러 히스토리 클리어
-// ============================================
+// 스케줄러 히스토리 클리어
 function mountHistoryClear(app) {
   const router = express.Router()
   router.post('/maintenance/history/clear', (req, res) => {
@@ -2237,9 +2205,7 @@ function mountHistoryClear(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 스케줄러 간단 상태
-// ============================================
+// 스케줄러 간단 상태
 function mountSimpleSchedulerState(app) {
   const router = express.Router()
   router.get('/_scheduler/state', (req, res) => {
@@ -2248,9 +2214,7 @@ function mountSimpleSchedulerState(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 유지보수 스케줄 목록 페이지(경량)
-// ============================================
+// 유지보수 스케줄 목록 페이지
 function mountMaintenanceLightHTML(app) {
   app.get('/maintenance_light.html', (req, res) => {
     const list = listMaintenanceSchedules()
@@ -2276,9 +2240,7 @@ function mountMaintenanceLightHTML(app) {
   })
 }
 
-// ============================================
-// [엔드포인트] 스케줄러 목록 JSON 라우트(캐시 없음)
-// ============================================
+// 스케줄러 목록 JSON 라우트
 function mountMaintenanceJSON(app) {
   const router = express.Router()
   router.get('/maintenance.json', (req, res) => {
@@ -2288,9 +2250,7 @@ function mountMaintenanceJSON(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 작업 큐 상세
-// ============================================
+// 작업 큐 상세
 function mountTaskDetail(app) {
   const router = express.Router()
   router.get('/tasks/:id/detail', (req, res) => {
@@ -2301,9 +2261,7 @@ function mountTaskDetail(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 스케줄러 목록 정렬 옵션
-// ============================================
+// 스케줄러 목록 정렬 옵션
 function mountScheduleSort(app) {
   const router = express.Router()
   router.get('/maintenance/sorted', (req, res) => {
@@ -2317,9 +2275,7 @@ function mountScheduleSort(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 간단한 상태/작업/스케줄 요약
-// ============================================
+// 간단한 상태/작업/스케줄 요약
 function mountAllSummary(app) {
   const router = express.Router()
   router.get('/_all/summary', async (req, res) => {
@@ -2337,9 +2293,7 @@ function mountAllSummary(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 유지보수 스케줄 샘플 데이터 주입
-// ============================================
+// 유지보수 스케줄 샘플 데이터 주입
 function mountSeedSchedules(app) {
   const router = express.Router()
   router.post('/_seed/schedules', (req, res) => {
@@ -2360,9 +2314,7 @@ function mountSeedSchedules(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 포트 상태 목록 요약(열려있는 포트 수)
-// ============================================
+// 포트 상태 목록 요약
 function mountOpenPortSummary(app) {
   const router = express.Router()
   router.get('/ports/summary', async (req, res) => {
@@ -2376,9 +2328,7 @@ function mountOpenPortSummary(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 유지보수 작업 최근 실행 기록
-// ============================================
+// 유지보수 작업 최근 실행 기록
 function mountRecentHistory(app) {
   const router = express.Router()
   router.get('/maintenance/history/recent', (req, res) => {
@@ -2388,9 +2338,7 @@ function mountRecentHistory(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 유지보수 스케줄러 설정(더미)
-// ============================================
+// 유지보수 스케줄러 설정
 function mountSchedulerSettings(app) {
   const router = express.Router()
   router.get('/_scheduler/settings', (req, res) => {
@@ -2399,9 +2347,7 @@ function mountSchedulerSettings(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 스케줄러 작업 카운트
-// ============================================
+// 스케줄러 작업 카운트
 function mountTaskCount(app) {
   const router = express.Router()
   router.get('/tasks/count', (req, res) => {
@@ -2410,9 +2356,7 @@ function mountTaskCount(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 유지보수 스케줄러 상태 체크(간단 OK)
-// ============================================
+// 유지보수 스케줄러 상태 체크
 function mountSchedulerOk(app) {
   const router = express.Router()
   router.get('/_scheduler/ok', (req, res) => {
@@ -2421,9 +2365,7 @@ function mountSchedulerOk(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [엔드포인트] 스케줄러 작업 목록(간단)
-// ============================================
+// 스케줄러 작업 목록
 function mountSimpleTasks(app) {
   const router = express.Router()
   router.get('/tasks.json', (req, res) => {
@@ -2432,12 +2374,7 @@ function mountSimpleTasks(app) {
   app.use('/', router)
 }
 
-// ============================================
-// [끝] 디바이스 필라/스케줄러 확장 끝
-// ============================================
-
-// [시작] 어플리케이션 통제의 SBOM 생성 기능 시작 ==
-
+//어플리케이션 통제의 SBOM 생성 기능
 // SBOM 상수 정의
 const SBOM_ROOT = path.join(__dirname, '..')
 const SBOM_BASE = path.join(SBOM_ROOT, 'data', 'sbom')
@@ -2719,9 +2656,7 @@ async function runSourceSbomJob({
             const dirs = findDirs.stdout.trim().split('\n').filter(d => d.trim())
             await sbomAddLog(jobId, `발견된 하위 디렉토리: ${dirs.length}개`)
             
-            // 첫 번째 디렉토리 사용 (또는 가장 많은 파일이 있는 디렉토리)
             if (dirs.length > 0) {
-              // 각 디렉토리의 파일 개수 확인
               let bestDir = dirs[0]
               let maxFiles = 0
               
@@ -2736,13 +2671,11 @@ async function runSourceSbomJob({
                 }
               }
               
-              // containerScanDir 업데이트
               containerScanDir = bestDir
               const detectedSubdir = bestDir.replace(containerRepoDir + '/', '')
               await sbomAddLog(jobId, `✓ 자동 선택된 디렉토리: ${detectedSubdir} (${maxFiles}개 파일)`)
             }
           } else {
-            // 하위 디렉토리가 없으면 루트 디렉토리 사용
             await sbomAddLog(jobId, `하위 디렉토리가 없음. 루트 디렉토리에서 스캔합니다.`)
           }
         }
@@ -2773,7 +2706,6 @@ async function runSourceSbomJob({
       await sbomAddLog(jobId, `출력 포맷: ${fosslightFormat} (요청: ${outputFormat})`)
       await sbomSetMeta(jobId, { progress: 25 })
       
-      // 스캔할 디렉토리 내용 확인
       try {
         const scanDirCheck = await dockerExec(`bash -c "ls -la '${containerScanDir}' 2>/dev/null | head -30"`)
         await sbomAddLog(jobId, `스캔 디렉토리 (${containerScanDir}) 내용:`)
@@ -2781,17 +2713,14 @@ async function runSourceSbomJob({
           await sbomAddLog(jobId, scanDirCheck.stdout.substring(0, 500))
         }
         
-        // 파일 개수 확인 및 메타데이터 업데이트
         const fileCount = await dockerExec(`bash -c "find '${containerScanDir}' -type f 2>/dev/null | wc -l"`)
         const actualFileCount = parseInt(fileCount.stdout.trim()) || 0
         await sbomAddLog(jobId, `발견된 파일 개수: ${actualFileCount}`)
         
-        // 디렉토리 개수 확인
         const dirCount = await dockerExec(`bash -c "find '${containerScanDir}' -type d 2>/dev/null | wc -l"`)
         const actualDirCount = parseInt(dirCount.stdout.trim()) || 0
         await sbomAddLog(jobId, `발견된 디렉토리 개수: ${actualDirCount}`)
         
-        // 실제 파일 개수와 디렉토리 개수로 메타데이터 업데이트 (항상 업데이트, 0이어도)
         await sbomSetMeta(jobId, { pathCount: actualFileCount, dirCount: actualDirCount })
         await sbomAddLog(jobId, `✓ 메타데이터 업데이트: pathCount=${actualFileCount}, dirCount=${actualDirCount}`)
       } catch (e) {
@@ -2802,7 +2731,7 @@ async function runSourceSbomJob({
       // 컨테이너 내부 경로 사용: /app/repos (소스), /app/output (결과)
       // containerScanDir: /app/repos/sbom-${jobId}/repo (또는 /subdir)
       // containerOutputDir: /app/output/sbom-${jobId}
-      // 공식 문서 예시: -p dir_to_analyze -o output
+      // 공식 문서: -p dir_to_analyze -o output
       const fosslightCmd = `fosslight_source -p "${containerScanDir}" -o "${containerOutputDir}" -f ${fosslightFormat}`
       
       await sbomAddLog(jobId, `fosslight_source 명령어 실행 중`)
@@ -2827,13 +2756,12 @@ async function runSourceSbomJob({
               }
             }
           } catch (e) {}
-        }, 5000) // 5초마다 확인
+        }, 5000) 
         
         let scanResult
         try {
           scanResult = await dockerExec(fosslightCmd)
         } catch (e) {
-          // stderr에 버전 정보만 있으면 무시 
           const stderr = e.stderr || ''
           const isVersionWarningOnly = stderr.includes('Version Info') && 
                                        stderr.includes('Newer version is available') &&
@@ -2842,7 +2770,6 @@ async function runSourceSbomJob({
                                        !stderr.toLowerCase().includes('exception')
           
           if (isVersionWarningOnly) {
-            // 버전 경고만 있으면 성공으로 처리
             scanResult = { stdout: e.stdout || '', stderr: stderr }
             await sbomAddLog(jobId, `⚠ 버전 경고 (무시): ${stderr.substring(0, 200)}`)
           } else {
@@ -2895,11 +2822,9 @@ async function runSourceSbomJob({
     }
 
     try {
-      // 컨테이너 내부에서 결과 파일 검색 
       await sbomAddLog(jobId, `결과 파일 검색 중 (컨테이너: ${containerOutputDir})`)
       await sbomSetMeta(jobId, { progress: 85 })
       
-      // 컨테이너 내부에서 모든 파일 목록 가져오기
       const findFilesCmd = `bash -c "find ${containerOutputDir} -type f 2>/dev/null || echo ''"`
       const findResult = await dockerExec(findFilesCmd)
       const fileListStr = findResult.stdout || ''
@@ -2912,16 +2837,15 @@ async function runSourceSbomJob({
         await sbomAddLog(jobId, `발견된 모든 파일: ${allFiles.map(f => path.basename(f)).join(', ')}`)
       }
       
-      // 요청한 포맷에 맞는 확장자 파일 찾기
       const expectedExtensions = {
         'excel': ['.xlsx'],
         'csv': ['.csv'],
         'opossum': ['.json'],
         'yaml': ['.yaml', '.yml'],
-        'spdx-json': ['.spdx.json', '.json'], // .json 확장자도 허용 (파일명에 spdx 포함)
-        'spdx-yaml': ['.spdx.yaml', '.yaml', '.yml'], // .yaml/.yml 확장자도 허용
+        'spdx-json': ['.spdx.json', '.json'], 
+        'spdx-yaml': ['.spdx.yaml', '.yaml', '.yml'], 
         'spdx-tag': ['.spdx', '.tag'],
-        'spdx-xml': ['.spdx.xml', '.xml'] // .xml 확장자도 허용
+        'spdx-xml': ['.spdx.xml', '.xml'] 
       }
       
       const extensions = expectedExtensions[fosslightFormat] || expectedExtensions[outputFormat] || ['.xlsx', '.csv', '.json', '.yaml', '.yml']
@@ -2937,22 +2861,17 @@ async function runSourceSbomJob({
         
         let matches = false
         
-        // SPDX 포맷인 경우: 파일명에 "spdx" 포함 + 확장자 일치
         if (fosslightFormat.startsWith('spdx-')) {
-          // SPDX 파일은 파일명에 "spdx"가 포함되어야 함
           if (basename.includes('spdx')) {
-            // 확장자가 일치하는지 확인 
             const extMatches = extensions.includes(lastExt) || extensions.includes(combinedExt)
             matches = extMatches
           }
         } else {
-          // 일반 포맷인 경우 확장자만 확인 (SPDX 파일 제외)
           const extMatches = extensions.includes(lastExt) || extensions.includes(combinedExt)
           matches = extMatches && !basename.includes('spdx')
         }
         
         if (matches) {
-          // 컨테이너 내부 파일의 수정 시간 가져오기
           try {
             const statCmd = `bash -c "stat -c %Y ${containerFile} 2>/dev/null || echo 0"`
             const statResult = await dockerExec(statCmd)
@@ -2969,16 +2888,14 @@ async function runSourceSbomJob({
           }
         }
       }
-      
-      // 최신 파일 우선 정렬
+    
       matchingFiles.sort((a, b) => b.mtime - a.mtime)
       
       if (matchingFiles.length === 0) {
         await sbomAddLog(jobId, `발견된 모든 파일: ${allFiles.map(f => path.basename(f)).join(', ')}`)
         throw new Error(`요청한 포맷(${fosslightFormat})에 맞는 파일을 찾지 못했습니다.`)
       }
-      
-      // 최신 파일 선택
+
       const primaryContainerFile = matchingFiles[0].containerPath
       
       for (const file of matchingFiles) {
@@ -3001,7 +2918,7 @@ async function runSourceSbomJob({
         await execPromise(copyCmd)
         await sbomAddLog(jobId, `✓ 결과 파일 복사 완료: ${tempHostFile}`)
         
-        // 파일 확장자 확인 (바이너리 파일인지 텍스트 파일인지)
+        // 파일 확장자 확인 
         const tempExt = path.extname(primaryContainerFile).toLowerCase()
         const isBinaryFile = tempExt === '.xlsx' || tempExt === '.xls'
         
@@ -3038,23 +2955,16 @@ async function runSourceSbomJob({
         const fileFinishedAt = new Date()
         const fileFinishedAtMs = fileFinishedAt.getTime()
         
-        // 모든 파일 형식의 시간 정보를 현재 시간으로 업데이트
-        // 주의: 파일 내용을 수정할 때는 원본을 최대한 보존하고 필요한 부분만 수정
-        // 바이너리 파일(Excel)은 내용 수정하지 않음
         let updatedContent = fileContent
         const currentTimeISO = fileFinishedAt.toISOString()
         const currentTimeDate = fileFinishedAt.toISOString().split('T')[0] 
         
-        // Excel 파일은 바이너리이므로 내용 수정하지 않음
         if (isBinaryFile) {
           await sbomAddLog(jobId, `바이너리 파일(Excel)은 내용 수정 없이 원본 그대로 저장합니다.`)
         } else {
           try {
-            // 원본 파일 크기 기록 (디버깅용)
             const originalSize = fileContent.length
             await sbomAddLog(jobId, `원본 파일 크기: ${originalSize} bytes`)
-            
-            // JSON 파일 (SPDX, Opossum 등 모든 형식)
             if (ext === '.json' || ext === '.spdx.json') {
               const fileContentStr = fileContent.toString('utf8')
             let jsonContent
@@ -3066,8 +2976,6 @@ async function runSourceSbomJob({
             
             if (jsonContent) {
               let updated = false
-              
-              // SPDX 형식: creationInfo.created
               if (jsonContent.spdxVersion || jsonContent.SPDXID) {
                 if (!jsonContent.creationInfo) {
                   jsonContent.creationInfo = {}
@@ -3078,8 +2986,6 @@ async function runSourceSbomJob({
                   await sbomAddLog(jobId, `✓ SPDX creationInfo.created 업데이트: ${currentTimeISO}`)
                 }
               }
-              
-              // Opossum 형식: metadata.createdAt 또는 createdAt
               if (jsonContent.items || jsonContent.metadata) {
                 if (jsonContent.metadata && jsonContent.metadata.createdAt) {
                   jsonContent.metadata.createdAt = currentTimeISO
@@ -3092,8 +2998,6 @@ async function runSourceSbomJob({
                   await sbomAddLog(jobId, `✓ JSON createdAt 업데이트: ${currentTimeISO}`)
                 }
               }
-              
-              // 일반 JSON: createdAt, created, timestamp 등
               if (jsonContent.createdAt) {
                 jsonContent.createdAt = currentTimeISO
                 updated = true
@@ -3115,13 +3019,11 @@ async function runSourceSbomJob({
               }
             }
           } 
-          // XML 파일 (SPDX XML 등)
           else if (ext === '.xml' || ext === '.spdx.xml') {
             const xmlContent = fileContent.toString('utf8')
             let newContent = xmlContent
             let updated = false
             
-            // SPDX XML: <creationInfo><created>
             const spdxCreatedPattern = /(<creationInfo>[\s\S]*?<created>)([^<]+)(<\/created>)/i
             if (spdxCreatedPattern.test(newContent)) {
               newContent = newContent.replace(spdxCreatedPattern, `$1${currentTimeISO}$3`)
@@ -3129,7 +3031,6 @@ async function runSourceSbomJob({
               await sbomAddLog(jobId, `✓ SPDX XML creationInfo.created 업데이트: ${currentTimeISO}`)
             }
             
-            // 일반 XML: <created>, <timestamp>, <date> 등
             const createdPattern = /(<created>)([^<]+)(<\/created>)/gi
             if (createdPattern.test(newContent)) {
               newContent = newContent.replace(createdPattern, `$1${currentTimeISO}$3`)
@@ -3148,14 +3049,11 @@ async function runSourceSbomJob({
               updatedContent = Buffer.from(newContent, 'utf8')
             }
           } 
-          // YAML 파일 (SPDX YAML 등) 
           else if (ext === '.yaml' || ext === '.yml' || ext === '.spdx.yaml') {
             const yamlContent = fileContent.toString('utf8')
             let newContent = yamlContent
             let updated = false
             
-            // SPDX YAML: creationInfo: created:
-            // creationInfo 섹션 내의 created 필드만 수정
             const spdxCreatedPattern = /(creationInfo:\s*\n(?:\s+[^\n]+\n)*?\s+created:\s*)([^\n]+)/i
             const spdxMatch = newContent.match(spdxCreatedPattern)
             if (spdxMatch) {
@@ -3164,8 +3062,6 @@ async function runSourceSbomJob({
               await sbomAddLog(jobId, `✓ SPDX YAML creationInfo.created 업데이트: ${currentTimeISO}`)
             }
             
-            // 일반 YAML: 최상위 레벨의 createdAt:, created: 만 수정
-            // ^로 시작하는 줄의 시작 부분만 매칭하여 중첩된 필드는 건드리지 않음
             const topLevelCreatedAtPattern = /(^createdAt:\s*)([^\n]+)/m
             if (topLevelCreatedAtPattern.test(newContent) && !updated) {
               newContent = newContent.replace(topLevelCreatedAtPattern, `$1${currentTimeISO}`)
@@ -3184,7 +3080,6 @@ async function runSourceSbomJob({
               updatedContent = Buffer.from(newContent, 'utf8')
               await sbomAddLog(jobId, `YAML 파일 업데이트 후 크기: ${updatedContent.length} bytes`)
             } else {
-              // 업데이트 없음 - 원본 그대로 사용
               updatedContent = fileContent
             }
           } 
@@ -3229,7 +3124,6 @@ async function runSourceSbomJob({
             ]
             
             for (const { pattern, name } of datePatterns) {
-              // test() 대신 직접 replace를 시도하고 변경 여부 확인
               const beforeReplace = newContent
               newContent = newContent.replace(pattern, (match, prefix) => {
                 updated = true
@@ -3277,7 +3171,7 @@ async function runSourceSbomJob({
         
         // 검사 완료 시간을 파일의 수정 시간과 접근 시간으로 설정 (현재 시간 사용)
         try {
-          const nowSeconds = Math.floor(Date.now() / 1000) // 초 단위 (정수)
+          const nowSeconds = Math.floor(Date.now() / 1000) 
           // atime (접근 시간)과 mtime (수정 시간)을 현재 시간으로 설정
           fs.utimesSync(finalPath, nowSeconds, nowSeconds)
           await sbomAddLog(jobId, `✓ 파일 시간 설정 완료: ${currentTimeISO}`)
@@ -3288,7 +3182,7 @@ async function runSourceSbomJob({
         await sbomAddLog(jobId, `저장 경로: ${finalPath}`)
         await sbomAddLog(jobId, `파일 크기: ${updatedContent.length} bytes`)
         
-        // 결과 파일에서 패키지 수 추출 시도 (FOSSLight 기본 형식 + SPDX 형식)
+        // 결과 파일에서 패키지 수 추출 시도
         let packageCount = 0
         try {
           if (ext === '.json' || ext === '.spdx.json') {
@@ -3592,11 +3486,6 @@ console.log('SBOM 엔드포인트 등록 완료')
   console.log('   - GET  /api/sbom/jobs/:jobId/status')
   console.log('   - GET  /api/sbom/results')
   console.log('   - GET  /api/sbom/ping')
-// [끝] 어플리케이션 통제의 SBOM 생성 기능 끝 ==
-
-// ========================================
-// 신원 통제 - 차단 규칙 관리 API (추가)
-// ========================================
 
 // 차단 규칙 저장 파일 경로
 const blockRulesFile = path.join(__dirname, 'blockRules.json')
@@ -3666,7 +3555,7 @@ app.post('/api/block-rules', (req, res) => {
   }
 })
 
-// 차단 규칙 업데이트 API (토글 등)
+// 차단 규칙 업데이트 API 
 app.put('/api/block-rules/:id', (req, res) => {
   try {
     const { id } = req.params
@@ -3843,11 +3732,10 @@ const monitorKeycloakEvents = async () => {
       }
     }
   } catch (error) {
-    // 모니터링 실패는 조용히 무시 (너무 많은 로그 방지)
   }
 }
 
-// Keycloak 이벤트 모니터링 시작 (30초마다)
+// Keycloak 이벤트 모니터링 시작
 let eventMonitorInterval = null
 const startEventMonitoring = () => {
   if (eventMonitorInterval) {

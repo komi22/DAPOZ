@@ -14,8 +14,8 @@ interface EvaluationResult {
   maturityLevel: string
   maturityDescription: string
   breakdown: {
-    maturity: number              // 보조 시각화용(체크리스트 비율 %)
-    asset: number                 // 보조 시각화용(위험 점수 %)
+    maturity: number              // 체크리스트 비율 
+    asset: number                 // 위험 점수
     threatModeling: number
     threatScenario: number
   }
@@ -36,13 +36,12 @@ const DiagnosisEvaluation: React.FC = () => {
   const [assetScore, setAssetScore] = useState<number | null>(null)
   const [assetLTotal, setAssetLTotal] = useState<number | null>(null)
 
-  // Final 시트 B1 (UI 표기: 체크리스트 진단 점수)
   const [finalSheetValue, setFinalSheetValue] = useState<number | string | null>(null)
   const [finalSheetError, setFinalSheetError] = useState<string | null>(null)
 
   // 서버 응답의 보조 필드 표시용 상태
   const [serverDetected, setServerDetected] = useState<string[]>([])
-  const [serverThreatScore, setServerThreatScore] = useState<number | null>(null)     // 0~1
+  const [serverThreatScore, setServerThreatScore] = useState<number | null>(null)       // 0~1
   const [serverChecklistScore, setServerChecklistScore] = useState<number | null>(null) // 0~1
   const [serverZeroTrustScore, setServerZeroTrustScore] = useState<number | null>(null) // 0~1
 
@@ -69,12 +68,20 @@ const DiagnosisEvaluation: React.FC = () => {
     const file = event.target.files?.[0]
     if (!file) return
 
+    // 파일 확장자 확인
+    const fileName = file.name.toLowerCase()
+    const hasValidExtension = fileName.endsWith('.xlsx') || fileName.endsWith('.xls')
+    
+    // MIME 타입 확인
     const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'application/octet-stream'
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'application/octet-stream', // 일부 브라우저에서 빈 타입으로 인식
+      '' 
     ]
-    if (!allowedTypes.includes(file.type)) {
+    
+    // 확장자 또는 MIME 타입 중 하나라도 유효하면 통과
+    if (!hasValidExtension && !allowedTypes.includes(file.type)) {
       alert('Excel 파일(.xlsx, .xls)만 업로드 가능합니다.')
       return
     }
@@ -86,7 +93,6 @@ const DiagnosisEvaluation: React.FC = () => {
     if (fileType === 'checklist') setChecklistScore(null)
     if (fileType === 'asset') { setAssetScore(null); setAssetLTotal(null) }
 
-    // Final!B1 읽기
     try {
       setFinalSheetError(null)
       setFinalSheetValue(null)
@@ -177,7 +183,6 @@ const DiagnosisEvaluation: React.FC = () => {
     return grandTotal
   }
 
-  // 샘플 분석기(로컬 표시용)
   const analyzeChecklist = async (): Promise<number> => {
     await new Promise(resolve => setTimeout(resolve, 300))
     return Math.floor(Math.random() * 40) + 60 // 60-100
@@ -189,7 +194,6 @@ const DiagnosisEvaluation: React.FC = () => {
     return { score, lTotal }
   }
 
-  // 분석 시작: 서버 호출 버전
   const handleAnalyze = async () => {
     if (uploadedFiles.length !== 1) {
       alert('성숙도/자산 체크리스트 파일을 업로드해주세요.')
@@ -204,7 +208,6 @@ const DiagnosisEvaluation: React.FC = () => {
     setServerZeroTrustScore(null)
 
     try {
-      // 보조: 로컬 카드(체크리스트/자산) 유지
       const checklist = await analyzeChecklist()
       setChecklistScore(checklist)
 
@@ -215,7 +218,7 @@ const DiagnosisEvaluation: React.FC = () => {
         setAssetLTotal(lTotal)
       }
 
-      // ✅ Final!B1 값을 0~1 범위로 한 번만 정규화
+      // Final!B1 값을 0~1 범위로 한 번만 정규화
       let payloadScore = (typeof finalSheetValue === 'number')
         ? finalSheetValue
         : parseFloat(String(finalSheetValue))
@@ -223,7 +226,6 @@ const DiagnosisEvaluation: React.FC = () => {
       if (!Number.isFinite(payloadScore)) {
         payloadScore = 0
       } else if (payloadScore > 1) {
-        // 예: 73 → 0.73
         payloadScore = payloadScore / 100
       } else if (payloadScore < 0) {
         payloadScore = 0
@@ -234,7 +236,7 @@ const DiagnosisEvaluation: React.FC = () => {
       const resp = await fetch(API_BASE_URL + '/diagnosis/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ checklistScore: payloadScore }) // ❗ 여기서 또 나누지 않음
+        body: JSON.stringify({ checklistScore: payloadScore }) 
       })
       if (!resp.ok) {
         const errJson = await resp.json().catch(() => null)
@@ -251,7 +253,7 @@ const DiagnosisEvaluation: React.FC = () => {
       // UI 상단 카드에 맞게 변환
       const zeroTrustPct = Math.round((data?.zeroTrustScore || 0) * 100)
 
-      // 서버 maturity.level 예: '기존(Traditional)' → UI 키와 매칭
+      // 서버 maturity.level '기존(Traditional)' 
       const rawLevel: string = data?.maturity?.level || ''
       const mappedLevel =
         rawLevel.includes('기존') ? '기존' :
@@ -265,7 +267,7 @@ const DiagnosisEvaluation: React.FC = () => {
         maturityLevel: mappedLevel,
         maturityDescription: data?.maturity?.meaning || '',
         breakdown: {
-          // 보조 시각화: 서버 값으로 구성(정확한 정의 없으므로 참고치로 표기)
+          // 서버 값으로 구성
           maturity: Math.max(0, Math.min(100, Math.round((data?.checklistScore || 0) * 100))),
           asset: Math.max(0, Math.min(100, Math.round((data?.threatScore || 0) * 100))),
           threatModeling: 0,
@@ -273,7 +275,7 @@ const DiagnosisEvaluation: React.FC = () => {
         }
       })
 
-      // ✅ 위협 개선 리포팅에서 사용할 최근 진단 결과를 브라우저에 저장
+      // 위협 개선 리포팅에서 사용할 최근 진단 결과를 브라우저에 저장
       try {
         const stored: ThreatReportStoredResult = {
           evaluationResult: {
@@ -447,7 +449,7 @@ const DiagnosisEvaluation: React.FC = () => {
       {/* 결과 */}
       {evaluationResult && (
         <div className="space-y-6">
-          {/* 종합 결과(서버 기반) */}
+          {/* 종합 결과 */}
           <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border border-purple-200">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">총 진단 결과</h2>
@@ -479,7 +481,7 @@ const DiagnosisEvaluation: React.FC = () => {
           </div>
 
 
-          {/* 개별 파일 결과 카드 - 자산표(보조) */}
+          {/* 개별 파일 결과 카드 - 자산표 */}
           {assetScore !== null && (
             <div className="bg-white rounded-lg shadow-sm p-6 border border-[#10113C]/20">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">자산표 분석 결과(로컬)</h3>

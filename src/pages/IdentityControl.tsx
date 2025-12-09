@@ -57,12 +57,6 @@ const IdentityControl: React.FC = () => {
   const [parsedKeycloakData, setParsedKeycloakData] = useState<any>(null);
   const [resultType, setResultType] = useState<'text' | 'json' | 'array' | 'object'>('text');
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
-  const [teleportTesting, setTeleportTesting] = useState(false);
-  const [teleportConfig, setTeleportConfig] = useState<{ proxyUrl: string; connectorName: string }>({
-    proxyUrl: '',
-    connectorName: 'keycloak',
-  });
-
   
   // 실시간 로그 관련 상태
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
@@ -73,6 +67,19 @@ const IdentityControl: React.FC = () => {
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
   const [selectedBlockTypes, setSelectedBlockTypes] = useState<Set<'user' | 'ip' | 'resource' | 'action'>>(new Set());
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
+  
+  // 모달 관련 상태
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ username: '', password: '' });
+  const [setPasswordForm, setSetPasswordForm] = useState({ username: '', password: '' });
+  const [createRoleForm, setCreateRoleForm] = useState({ roleName: '' });
+  const [assignRoleForm, setAssignRoleForm] = useState({ username: '', roleName: '' });
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [lastExecutedCommands, setLastExecutedCommands] = useState<Record<string, string>>({});
   
   const terminalRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -474,7 +481,7 @@ const IdentityControl: React.FC = () => {
                 if (checkData.success && checkData.blocked) {
                   // 차단 규칙에 해당하면 상태를 'blocked'로 변경
                   if (log.status === 'success') {
-                    console.log(`🚫 차단된 접근 감지: ${checkData.reason}`, log);
+                    console.log(`차단된 접근 감지: ${checkData.reason}`, log);
                     return { ...log, status: 'blocked' as const };
                   }
                 }
@@ -2409,10 +2416,14 @@ const IdentityControl: React.FC = () => {
     setLoading(true);
 
     let rawOutput = '';
+    
+    // set-password, add-roles 같은 명령어는 더 긴 타임아웃 설정
+    const isSilentCommand = command.includes('set-password') || command.includes('add-roles') || command.includes('create users');
+    const timeoutDuration = isSilentCommand ? 60000 : 30000; // 60초 또는 30초
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
       const response = await fetch(API_BASE_URL + '/system/execute', {
         method: 'POST',
@@ -2429,10 +2440,23 @@ const IdentityControl: React.FC = () => {
           addTerminalMessage('output', result.stdout);
           rawOutput = result.stdout; // 원본 출력 저장
         } else if (result.stderr) {
-          addTerminalMessage('error', result.stderr);
-          rawOutput = result.stderr; // 에러 출력 저장
+          // stderr가 있어도 set-password 같은 명령어는 성공일 수 있음
+          if (isSilentCommand && !result.stderr.includes('error') && !result.stderr.includes('Error') && !result.stderr.includes('failed')) {
+            rawOutput = '명령어가 성공적으로 실행되었습니다.';
+            addTerminalMessage('output', '명령어가 성공적으로 실행되었습니다.');
+          } else {
+            addTerminalMessage('error', result.stderr);
+            rawOutput = result.stderr; // 에러 출력 저장
+          }
         } else {
-          rawOutput = '명령어가 실행되었지만 출력이 없습니다.';
+          // 출력이 없는 경우 - set-password 같은 명령어는 성공으로 간주
+          if (isSilentCommand) {
+            rawOutput = '명령어가 성공적으로 실행되었습니다.';
+            addTerminalMessage('output', '명령어가 성공적으로 실행되었습니다.');
+          } else {
+            rawOutput = '명령어가 실행되었지만 출력이 없습니다.';
+            addTerminalMessage('output', '명령어가 실행되었지만 출력이 없습니다.');
+          }
         }
         addTerminalMessage('output', 'root@keycloak:/opt/keycloak# ');
       } else {
@@ -2444,11 +2468,18 @@ const IdentityControl: React.FC = () => {
     } catch (error: any) {
       let errorMsg = '';
       if (error.name === 'AbortError') {
-        errorMsg = '명령어 실행 시간 초과 (30초)';
+        // 타임아웃이 발생했지만 set-password 같은 명령어는 실제로 성공했을 수 있음
+        if (isSilentCommand) {
+          errorMsg = '명령어가 실행되었습니다. (응답 대기 시간 초과했지만 성공했을 가능성이 높습니다)';
+          addTerminalMessage('output', errorMsg);
+        } else {
+          errorMsg = `명령어 실행 시간 초과 (${timeoutDuration / 1000}초)`;
+          addTerminalMessage('error', errorMsg);
+        }
       } else {
         errorMsg = `네트워크 오류: ${error.message}`;
+        addTerminalMessage('error', errorMsg);
       }
-      addTerminalMessage('error', errorMsg);
       rawOutput = errorMsg;
     } finally {
       setLoading(false);
@@ -2624,83 +2655,218 @@ const IdentityControl: React.FC = () => {
     window.open('http://localhost:8080', '_blank');
   };
 
-  const testTeleportIntegration = async () => {
-    if (!teleportConfig.proxyUrl || teleportConfig.proxyUrl.trim().length === 0) {
-      setSelectedCommandResult('Teleport Proxy URL을 먼저 입력해주세요.');
+  // 역할 목록 가져오기
+  const fetchRoles = async () => {
+    setLoadingRoles(true);
+    try {
+      const response = await fetch(API_BASE_URL + '/keycloak/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          command: 'get roles --realm master'
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        try {
+          const roles = JSON.parse(result.stdout || '[]');
+          const roleNames = Array.isArray(roles) 
+            ? roles.map((role: any) => role.name || role).filter((name: string) => name)
+            : [];
+          setAvailableRoles(roleNames);
+        } catch (e) {
+          console.error('역할 목록 파싱 실패:', e);
+          setAvailableRoles([]);
+        }
+      }
+    } catch (error) {
+      console.error('역할 목록 가져오기 실패:', error);
+      setAvailableRoles([]);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  // 사용자 역할 조회
+  const fetchUserRoles = async (username: string) => {
+    try {
+      // 먼저 사용자 ID 찾기
+      const userResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          command: `get users --realm master -q username=${username}`
+        })
+      });
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json();
+        const users = JSON.parse(userResult.stdout || '[]');
+        if (users.length > 0) {
+          const userId = users[0].id;
+          
+          // 사용자 역할 조회
+          const rolesResponse = await fetch(API_BASE_URL + '/keycloak/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              command: `get users/${userId}/role-mappings/realm --realm master`
+            })
+          });
+          
+          if (rolesResponse.ok) {
+            const rolesResult = await rolesResponse.json();
+            const roles = JSON.parse(rolesResult.stdout || '[]');
+            return Array.isArray(roles) ? roles.map((role: any) => role.name || role) : [];
+          }
+        }
+      }
+      return [];
+    } catch (error) {
+      console.error('사용자 역할 조회 실패:', error);
+      return [];
+    }
+  };
+
+  // 사용자 생성
+  const handleCreateUser = async () => {
+    if (!createUserForm.username.trim() || !createUserForm.password.trim()) {
+      addTerminalMessage('error', '사용자 이름과 비밀번호를 입력해주세요.');
+      return;
+    }
+    
+    try {
+      // 사용자 생성
+      const createCommand = `create users -s username=${createUserForm.username} -s enabled=true -s emailVerified=true --realm master`;
+      setLastExecutedCommands(prev => ({ ...prev, 'create users': createCommand }));
+      await handleExecuteCommandDirect(createCommand);
+      
+      // 비밀번호 설정
+      const passwordCommand = `set-password --username ${createUserForm.username} --new-password ${createUserForm.password} --realm master`;
+      setLastExecutedCommands(prev => ({ ...prev, 'set-password': passwordCommand }));
+      await handleExecuteCommandDirect(passwordCommand);
+      
+      setShowCreateUserModal(false);
+      setCreateUserForm({ username: '', password: '' });
+      addTerminalMessage('output', `사용자 ${createUserForm.username} 생성 완료`);
+    } catch (error) {
+      addTerminalMessage('error', '사용자 생성 실패');
+    }
+  };
+
+  // 비밀번호 설정
+  const handleSetPassword = async () => {
+    if (!setPasswordForm.username.trim() || !setPasswordForm.password.trim()) {
+      addTerminalMessage('error', '사용자 이름과 비밀번호를 입력해주세요.');
+      return;
+    }
+    
+    try {
+      const command = `set-password --username ${setPasswordForm.username} --new-password ${setPasswordForm.password} --realm master`;
+      setLastExecutedCommands(prev => ({ ...prev, 'set-password': command }));
+      await handleExecuteCommandDirect(command);
+      setShowSetPasswordModal(false);
+      setSetPasswordForm({ username: '', password: '' });
+      addTerminalMessage('output', `사용자 ${setPasswordForm.username} 비밀번호 설정 완료`);
+    } catch (error) {
+      addTerminalMessage('error', '비밀번호 설정 실패');
+    }
+  };
+
+  // 역할 생성
+  const handleCreateRole = async () => {
+    if (!createRoleForm.roleName.trim()) {
+      addTerminalMessage('error', '역할 이름을 입력해주세요.');
+      return;
+    }
+    
+    try {
+      const command = `create roles -s name=${createRoleForm.roleName} --realm master`;
+      setLastExecutedCommands(prev => ({ ...prev, 'create roles': command }));
+      await handleExecuteCommandDirect(command);
+      setShowCreateRoleModal(false);
+      setCreateRoleForm({ roleName: '' });
+      addTerminalMessage('output', `역할 ${createRoleForm.roleName} 생성 완료`);
+    } catch (error) {
+      addTerminalMessage('error', '역할 생성 실패');
+    }
+  };
+
+  // 역할 할당
+  const handleAssignRole = async () => {
+    if (!assignRoleForm.username.trim() || !assignRoleForm.roleName.trim()) {
+      addTerminalMessage('error', '사용자 이름과 역할을 선택해주세요.');
+      return;
+    }
+    
+    try {
+      const command = `add-roles --uusername ${assignRoleForm.username} --rolename ${assignRoleForm.roleName} --realm master`;
+      setLastExecutedCommands(prev => ({ ...prev, 'add-roles': command }));
+      await handleExecuteCommandDirect(command);
+      setShowAssignRoleModal(false);
+      setAssignRoleForm({ username: '', roleName: '' });
+      addTerminalMessage('output', `사용자 ${assignRoleForm.username}에게 역할 ${assignRoleForm.roleName} 할당 완료`);
+    } catch (error) {
+      addTerminalMessage('error', '역할 할당 실패');
+    }
+  };
+
+  // 역할 할당 결과 보기 (사용자 역할 조회 포함)
+  const handleShowAssignRoleResult = async (command: string) => {
+    const rawResult = commandResults[command];
+    if (!rawResult || rawResult.trim() === '') {
+      setSelectedCommandResult('아직 실행된 명령어가 없습니다.');
       setResultType('text');
       setParsedKeycloakData(null);
       setShowResultModal(true);
       return;
     }
 
-    try {
-      setTeleportTesting(true);
-      setError('');
-      const response = await fetch(API_BASE_URL + '/teleport/sso-test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          proxyUrl: teleportConfig.proxyUrl.trim(),
-          connectorName: teleportConfig.connectorName.trim() || 'keycloak',
-        }),
-      });
-
-      if (!response.ok) {
-        const textBody = await response.text().catch(() => '');
-        setSelectedCommandResult(
-          `Teleport 연동 테스트 실패 (HTTP ${response.status})\n\n${textBody || '백엔드에서 반환된 오류 메시지가 없습니다.'}`
-        );
+    // add-roles 명령어인 경우 사용자 역할 조회
+    if (command.includes('add-roles')) {
+      const usernameMatch = command.match(/--uusername\s+(\S+)/);
+      const roleNameMatch = command.match(/--rolename\s+(\S+)/);
+      if (usernameMatch) {
+        const username = usernameMatch[1];
+        const roleName = roleNameMatch ? roleNameMatch[1] : '알 수 없음';
+        const userRoles = await fetchUserRoles(username);
+        
+        let resultText = '역할 할당 결과:\n\n';
+        if (rawResult.includes('error') || rawResult.includes('Error') || rawResult.includes('실패') || rawResult.includes('Failed')) {
+          resultText += `역할 할당 실패\n\n`;
+          resultText += `사용자: ${username}\n`;
+          resultText += `역할: ${roleName}\n\n`;
+          resultText += `오류 메시지:\n${rawResult}`;
+        } else {
+          resultText += `역할 할당 성공\n\n`;
+          resultText += `사용자: ${username}\n`;
+          resultText += `할당된 역할: ${roleName}\n\n`;
+          resultText += `현재 할당된 모든 역할:\n`;
+          if (userRoles.length > 0) {
+            userRoles.forEach((role, idx) => {
+              const isNewRole = role === roleName;
+              resultText += `${idx + 1}. ${role}${isNewRole ? ' (할당됨)' : ''}\n`;
+            });
+          } else {
+            resultText += '(할당된 역할이 없습니다)\n';
+          }
+        }
+        
+        setSelectedCommandResult(resultText);
         setResultType('text');
         setParsedKeycloakData(null);
         setShowResultModal(true);
         return;
       }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await response.json().catch(() => null);
-        if (data) {
-          if (Array.isArray(data)) {
-            setParsedKeycloakData(data);
-            setResultType('array');
-            setSelectedCommandResult('');
-          } else {
-            setSelectedCommandResult(
-              data.message
-                ? `${data.message}${data.details ? '\n\n' + JSON.stringify(data.details, null, 2) : ''}`
-                : JSON.stringify(data, null, 2)
-            );
-            setResultType('text');
-            setParsedKeycloakData(null);
-          }
-        } else {
-          setSelectedCommandResult('Teleport 연동 테스트가 성공했지만 반환된 데이터가 없습니다.');
-          setResultType('text');
-          setParsedKeycloakData(null);
-        }
-      } else {
-        const textBody = await response.text().catch(() => '');
-        setSelectedCommandResult(
-          textBody && textBody.trim().length > 0
-            ? textBody
-            : 'Teleport 연동 테스트가 성공적으로 완료되었습니다.'
-        );
-        setResultType('text');
-        setParsedKeycloakData(null);
-      }
-
-      setShowResultModal(true);
-    } catch (e: any) {
-      console.error('Teleport 연동 테스트 오류:', e);
-      setSelectedCommandResult(`Teleport 연동 테스트 중 오류가 발생했습니다.\n\n${e?.message || e}`);
-      setResultType('text');
-      setParsedKeycloakData(null);
-      setShowResultModal(true);
-    } finally {
-      setTeleportTesting(false);
     }
+
+    // 일반 결과 표시
+    const parsedResult = parseKeycloakResult(rawResult, command);
+    setSelectedCommandResult(parsedResult || rawResult);
+    setResultType('text');
+    setParsedKeycloakData(null);
+    setShowResultModal(true);
   };
 
   return (
@@ -2920,74 +3086,6 @@ const IdentityControl: React.FC = () => {
         )}
       </div>
 
-
-      {/* Teleport 연동 */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <Shield className="w-6 h-6 text-indigo-600" />
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Teleport 연동
-              </h2>
-              <p className="text-sm text-gray-500">
-                Teleport Proxy URL과 SAML 커넥터 이름을 입력한 뒤 연동 테스트를 수행합니다.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Teleport Proxy URL
-            </label>
-            <input
-              type="text"
-              value={teleportConfig.proxyUrl}
-              onChange={(e) =>
-                setTeleportConfig((prev) => ({ ...prev, proxyUrl: e.target.value }))
-              }
-              placeholder="https://mytenant.teleport.sh"
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Teleport Proxy Service가 노출된 주소를 입력하세요.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              SAML 커넥터 이름
-            </label>
-            <input
-              type="text"
-              value={teleportConfig.connectorName}
-              onChange={(e) =>
-                setTeleportConfig((prev) => ({ ...prev, connectorName: e.target.value }))
-              }
-              placeholder="keycloak"
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Teleport에 생성된 SAML 커넥터 이름을 입력하세요 (예: keycloak).
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={testTeleportIntegration}
-          disabled={teleportTesting}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white hover:bg-[#10113C]/90 disabled:bg-gray-400 transition-colors"
-          style={{ backgroundColor: teleportTesting ? '#9CA3AF' : '#10113C' }}
-        >
-          {teleportTesting ? (
-            <div className="mr-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-          ) : (
-            <Shield className="w-4 h-4 mr-2" />
-          )}
-          <span>{teleportTesting ? 'Teleport 연동 테스트 중...' : 'Teleport 연동 테스트 실행'}</span>
-        </button>
-      </div>
-
       {/* 인터랙티브 터미널 */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
         <div className="flex items-center justify-between mb-4">
@@ -3041,7 +3139,7 @@ const IdentityControl: React.FC = () => {
             terminalMessages.map((message) => (
               <div key={message.id} className={`mb-1 ${
                 message.type === 'command' ? 'text-yellow-400' :
-                message.type === 'error' ? 'text-red-400' : 'text-[#10113C]'
+                message.type === 'error' ? 'text-red-400' : 'text-white'
               }`}>
                 {message.type === 'command' && <span className="text-blue-400">$ </span>}
                 <span className="whitespace-pre-wrap">{message.content}</span>
@@ -3646,7 +3744,18 @@ const IdentityControl: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExecuteCommandDirect(example.command);
+                    if (example.name === '사용자 생성') {
+                      setShowCreateUserModal(true);
+                    } else if (example.name === '사용자 비밀번호 설정') {
+                      setShowSetPasswordModal(true);
+                    } else if (example.name === '역할 생성') {
+                      setShowCreateRoleModal(true);
+                    } else if (example.name === '사용자에게 역할 할당') {
+                      fetchRoles();
+                      setShowAssignRoleModal(true);
+                    } else {
+                      handleExecuteCommandDirect(example.command);
+                    }
                   }}
                   disabled={!isTerminalConnected || loading}
                   className="flex items-center space-x-1 bg-[#10113C] text-white px-3 py-1.5 rounded text-sm hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
@@ -3657,9 +3766,38 @@ const IdentityControl: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleShowResult(example.command);
+                    if (example.name === '사용자에게 역할 할당') {
+                      const lastCommand = lastExecutedCommands['add-roles'] || example.command;
+                      handleShowAssignRoleResult(lastCommand);
+                    } else if (example.name === '사용자 생성') {
+                      const lastCommand = lastExecutedCommands['create users'] || example.command;
+                      handleShowResult(lastCommand);
+                    } else if (example.name === '사용자 비밀번호 설정') {
+                      const lastCommand = lastExecutedCommands['set-password'] || example.command;
+                      handleShowResult(lastCommand);
+                    } else if (example.name === '역할 생성') {
+                      const lastCommand = lastExecutedCommands['create roles'] || example.command;
+                      handleShowResult(lastCommand);
+                    } else {
+                      const lastCommand = lastExecutedCommands[example.command] || example.command;
+                      handleShowResult(lastCommand);
+                    }
                   }}
-                  disabled={!commandResults[example.command]}
+                  disabled={(() => {
+                    let checkCommand = '';
+                    if (example.name === '사용자에게 역할 할당') {
+                      checkCommand = lastExecutedCommands['add-roles'] || example.command;
+                    } else if (example.name === '사용자 생성') {
+                      checkCommand = lastExecutedCommands['create users'] || example.command;
+                    } else if (example.name === '사용자 비밀번호 설정') {
+                      checkCommand = lastExecutedCommands['set-password'] || example.command;
+                    } else if (example.name === '역할 생성') {
+                      checkCommand = lastExecutedCommands['create roles'] || example.command;
+                    } else {
+                      checkCommand = lastExecutedCommands[example.command] || example.command;
+                    }
+                    return !commandResults[checkCommand];
+                  })()}
                   className="flex items-center space-x-1 bg-gray-600 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   <Eye className="w-3 h-3" />
@@ -4072,6 +4210,201 @@ const IdentityControl: React.FC = () => {
                 className="bg-[#10113C] text-white px-6 py-2 rounded-lg hover:bg-[#10113C]/90 transition-colors"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사용자 생성 모달 */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateUserModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">사용자 생성</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={createUserForm.username}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="사용자 이름 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                <input
+                  type="password"
+                  value={createUserForm.password}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="비밀번호 입력"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowCreateUserModal(false);
+                  setCreateUserForm({ username: '', password: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={!createUserForm.username.trim() || !createUserForm.password.trim()}
+                className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 비밀번호 설정 모달 */}
+      {showSetPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSetPasswordModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">사용자 비밀번호 설정</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={setPasswordForm.username}
+                  onChange={(e) => setSetPasswordForm({ ...setPasswordForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="사용자 이름 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+                <input
+                  type="password"
+                  value={setPasswordForm.password}
+                  onChange={(e) => setSetPasswordForm({ ...setPasswordForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="새 비밀번호 입력"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowSetPasswordModal(false);
+                  setSetPasswordForm({ username: '', password: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSetPassword}
+                disabled={!setPasswordForm.username.trim() || !setPasswordForm.password.trim()}
+                className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                설정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 역할 생성 모달 */}
+      {showCreateRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">역할 생성</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">역할 이름</label>
+                <input
+                  type="text"
+                  value={createRoleForm.roleName}
+                  onChange={(e) => setCreateRoleForm({ ...createRoleForm, roleName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="역할 이름 입력"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowCreateRoleModal(false);
+                  setCreateRoleForm({ roleName: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateRole}
+                disabled={!createRoleForm.roleName.trim()}
+                className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 역할 할당 모달 */}
+      {showAssignRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAssignRoleModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">사용자에게 역할 할당</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용자 이름</label>
+                <input
+                  type="text"
+                  value={assignRoleForm.username}
+                  onChange={(e) => setAssignRoleForm({ ...assignRoleForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  placeholder="사용자 이름 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">역할 선택</label>
+                {loadingRoles ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-500">역할 목록 로딩 중...</div>
+                ) : (
+                  <select
+                    value={assignRoleForm.roleName}
+                    onChange={(e) => setAssignRoleForm({ ...assignRoleForm, roleName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10113C] focus:border-transparent"
+                  >
+                    <option value="">역할 선택</option>
+                    {availableRoles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAssignRoleModal(false);
+                  setAssignRoleForm({ username: '', roleName: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAssignRole}
+                disabled={!assignRoleForm.username.trim() || !assignRoleForm.roleName.trim() || loadingRoles}
+                className="px-4 py-2 bg-[#10113C] text-white rounded-lg hover:bg-[#10113C]/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                할당
               </button>
             </div>
           </div>

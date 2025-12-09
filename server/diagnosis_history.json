@@ -1,0 +1,46 @@
+[
+  {
+    "timestamp": "2025-12-09T05:19:50.801Z",
+    "zeroTrustScore": 0.36,
+    "checklistScore": 0.36,
+    "threatScore": 0,
+    "detectedScenarios": [],
+    "maturity": {
+      "level": "초기(Initial)",
+      "meaning": "기초 통제 및 점검 절차 존재, 일부 수동 운영"
+    }
+  },
+  {
+    "timestamp": "2025-12-09T04:12:12.845Z",
+    "zeroTrustScore": 0.36,
+    "checklistScore": 0.36,
+    "threatScore": 0,
+    "detectedScenarios": [],
+    "maturity": {
+      "level": "초기(Initial)",
+      "meaning": "기초 통제 및 점검 절차 존재, 일부 수동 운영"
+    }
+  },
+  {
+    "timestamp": "2025-12-09T04:10:03.908Z",
+    "zeroTrustScore": 0.54,
+    "checklistScore": 0.54,
+    "threatScore": 0,
+    "detectedScenarios": [],
+    "maturity": {
+      "level": "향상(Advanced)",
+      "meaning": "표준화된 절차 + 자동화 일부 적용"
+    }
+  },
+  {
+    "timestamp": "2025-12-09T04:06:50.815Z",
+    "zeroTrustScore": 0.52,
+    "checklistScore": 0.52,
+    "threatScore": 0,
+    "detectedScenarios": [],
+    "maturity": {
+      "level": "향상(Advanced)",
+      "meaning": "표준화된 절차 + 자동화 일부 적용"
+    }
+  }
+]

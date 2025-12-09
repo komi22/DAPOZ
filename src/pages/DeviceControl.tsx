@@ -79,7 +79,7 @@ const DeviceControl: React.FC = () => {
   const [refreshingGpoPolicy, setRefreshingGpoPolicy] = useState(false)
   const [refreshingFirewallRules, setRefreshingFirewallRules] = useState(false)
   const [commandExecutionType, setCommandExecutionType] = useState<'individual' | 'group'>('individual')
-  const [selectedGroupDepartment, setSelectedGroupDepartment] = useState<string>('HR')
+  const [selectedGroupDepartment, setSelectedGroupDepartment] = useState<string>('')
   const [loadingSecurityStatus, setLoadingSecurityStatus] = useState<Record<string, boolean>>({})
   const [showToast, setShowToast] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
@@ -90,7 +90,75 @@ const DeviceControl: React.FC = () => {
   const [screensaverMinutes, setScreensaverMinutes] = useState(1)
   const [pendingScreensaverCommand, setPendingScreensaverCommand] = useState<any>(null)
   
+  // 부서 목록 관리 
+  const [departments, setDepartments] = useState<string[]>(() => {
+    const saved = localStorage.getItem('deviceDepartments')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        const filtered = parsed.filter((d: string) => d !== '전체')
+        if (JSON.stringify(filtered) !== JSON.stringify(parsed)) {
+          localStorage.setItem('deviceDepartments', JSON.stringify(filtered))
+        }
+        return filtered
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
+  const [newDepartment, setNewDepartment] = useState('')
+  
   const itemsPerPage = 10
+
+  const getCustomDepartments = () => {
+    return departments
+  }
+
+  // 부서 추가 함수
+  const handleAddDepartment = () => {
+    if (!newDepartment.trim()) return
+    
+    const trimmedDept = newDepartment.trim()
+    
+    // 이미 존재하는 부서인지 확인
+    if (departments.includes(trimmedDept)) {
+      alert('이미 존재하는 부서입니다.')
+      return
+    }
+    
+    // 부서 추가 
+    const updatedDepartments = [...departments]
+    updatedDepartments.push(trimmedDept)
+    
+    setDepartments(updatedDepartments)
+    localStorage.setItem('deviceDepartments', JSON.stringify(updatedDepartments))
+    
+    // 부서 추가 후 자동으로 "부서 전체" 모드로 전환하고 새 부서 선택
+    setSelectedDepartmentType('group')
+    setSelectedGroupDepartment(trimmedDept)
+    
+    setNewDepartment('')
+  }
+
+  // 부서 삭제 함수
+  const handleDeleteDepartment = (dept: string) => {
+    // '전체'는 삭제 불가
+    if (dept === '전체') {
+      alert('전체는 삭제할 수 없습니다.')
+      return
+    }
+    
+    // 현재 선택된 부서인 경우 선택 해제
+    if (selectedGroupDepartment === dept) {
+      setSelectedGroupDepartment('')
+    }
+    
+    // 부서 목록에서 제거 
+    const updatedDepartments = departments.filter(d => d !== dept)
+    setDepartments(updatedDepartments)
+    localStorage.setItem('deviceDepartments', JSON.stringify(updatedDepartments))
+  }
 
   const fetchTargets = async (includeDeviceInfo: boolean = true) => {
     setRefreshingTargets(true)
@@ -992,7 +1060,6 @@ const DeviceControl: React.FC = () => {
     }
   }
 
-  const departments = ['전체', 'HR', 'IT', 'Finance', 'Marketing']
 
   const parseCommandResult = (commandName: string, stdout: string, stderr: string) => {
     if (stderr || (stdout && (stdout.includes('Traceback') || stdout.includes('Exception') || stdout.includes('Error')))) {
@@ -1621,7 +1688,7 @@ const DeviceControl: React.FC = () => {
 
       {/* 3. 하단: 부서 설정 */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">디바이스 부서 설정</h3>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">디바이스 부서 설정</h2>
           
           <div className="space-y-4">
             <div>
@@ -1653,9 +1720,77 @@ const DeviceControl: React.FC = () => {
                     ))}
                   </select>
                 )}
+                {selectedDepartmentType === 'group' && (
+                  <select
+                    value={selectedGroupDepartment}
+                    onChange={(e) => setSelectedGroupDepartment(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">부서 선택</option>
+                    {getCustomDepartments().map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
             
+            {/* 부서 추가 섹션 - 항상 표시 */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">새 부서 추가</label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newDepartment}
+                  onChange={(e) => setNewDepartment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddDepartment()
+                    }
+                  }}
+                  placeholder="부서명을 입력하세요"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleAddDepartment}
+                  disabled={!newDepartment.trim()}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  추가
+                </button>
+              </div>
+            </div>
+
+            {/* 부서 목록 및 삭제 섹션 */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">부서 목록</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {getCustomDepartments().map(dept => (
+                  <div
+                    key={dept}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200"
+                  >
+                    <span className="text-sm text-gray-700">{dept}</span>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`"${dept}" 부서를 삭제하시겠습니까?`)) {
+                          handleDeleteDepartment(dept)
+                        }
+                      }}
+                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                      title="부서 삭제"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {getCustomDepartments().length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-2">등록된 부서가 없습니다.</p>
+                )}
+              </div>
+            </div>
+
+            {/* 개별 디바이스 선택 시 */}
             {selectedDepartmentType === 'individual' && (selectedDepartmentTarget || selectedDevice) && (
               <>
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -1675,18 +1810,19 @@ const DeviceControl: React.FC = () => {
                       onChange={(e) => setDepartmentFilter(e.target.value || '전체')}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                      {departments.filter(d => d !== '전체').map(dept => (
+                      <option value="">부서 선택</option>
+                      {getCustomDepartments().map(dept => (
                         <option key={dept} value={dept}>{dept}</option>
                       ))}
                     </select>
                     <button
                       onClick={() => {
                         const target = selectedDepartmentTarget || selectedDevice
-                        if (target && departmentFilter !== '전체') {
+                        if (target && departmentFilter && departmentFilter !== '전체') {
                           handleSetDepartment()
                         }
                       }}
-                      disabled={!selectedDepartmentTarget && !selectedDevice || departmentFilter === '전체'}
+                      disabled={!selectedDepartmentTarget && !selectedDevice || !departmentFilter || departmentFilter === '전체'}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
                       저장
@@ -1695,13 +1831,64 @@ const DeviceControl: React.FC = () => {
                 </div>
               </>
             )}
+
+            {/* 부서 전체 선택 시 */}
+            {selectedDepartmentType === 'group' && selectedGroupDepartment && (
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                    선택된 부서: <span className="text-blue-600">{selectedGroupDepartment}</span>
+                  </h4>
+                  <p className="text-xs text-gray-600 mb-3">
+                    이 부서에 속한 모든 디바이스에 명령을 실행할 수 있습니다.
+                  </p>
+                  
+                  {/* 해당 부서의 디바이스 목록 */}
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-gray-700 mb-2">디바이스 목록:</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {Object.entries(devices)
+                        .filter(([target, info]) => info.department === selectedGroupDepartment)
+                        .map(([target, info]) => {
+                          const targetStatus = targets.find(t => t.id === target)?.status || 'offline'
+                          return (
+                            <div
+                              key={target}
+                              className="flex items-center justify-between p-2 bg-white rounded border border-gray-200"
+                            >
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {info.host || target}
+                                </p>
+                                <p className="text-xs text-gray-500">{target}</p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                targetStatus === 'online'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {targetStatus === 'online' ? '온라인' : '오프라인'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      {Object.entries(devices).filter(([target, info]) => info.department === selectedGroupDepartment).length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          이 부서에 속한 디바이스가 없습니다.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
       </div>
 
       {/* 4. 하단 중앙: 명령어 목록 (카드 형식) */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">보안 모니터링 명령어</h3>
+          <h2 className="text-xl font-semibold text-gray-800">보안 모니터링 명령어</h2>
           <div className="flex items-center space-x-4">
             {/* 실행 타입 선택 */}
             <div className="flex items-center space-x-2">
@@ -1749,7 +1936,7 @@ const DeviceControl: React.FC = () => {
                   onChange={(e) => setSelectedGroupDepartment(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {departments.filter(d => d !== '전체').map(dept => (
+                  {getCustomDepartments().map(dept => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>
@@ -1870,7 +2057,7 @@ const DeviceControl: React.FC = () => {
             onClick={() => setShowPolicyStatus(!showPolicyStatus)}
             className="flex items-center justify-between flex-1 text-left"
           >
-            <h3 className="text-lg font-semibold text-gray-800">디바이스 정책 적용 현황</h3>
+            <h2 className="text-xl font-semibold text-gray-800">디바이스 정책 적용 현황</h2>
             {showPolicyStatus ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
           {showPolicyStatus && selectedDevice && (
