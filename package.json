@@ -29,7 +29,7 @@
     "@langchain/core": "^0.3.0",
     "@langchain/community": "^0.3.0",
     "@langchain/openai": "^0.3.0",
-    "@langchain/textsplitters": "^0.3.0",
+    "@langchain/textsplitters": "^0.1.0",
     "chromadb": "^1.8.1",
     "js-yaml": "^4.1.0",
     "openai": "^4.20.0",
