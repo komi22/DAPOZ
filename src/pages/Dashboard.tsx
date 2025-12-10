@@ -18,6 +18,8 @@ const Dashboard: React.FC = () => {
   const [threatData, setThreatData] = useState<any[]>([])
   const [systemStatus, setSystemStatus] = useState('정상')
   const [loading, setLoading] = useState(true)
+  const [zeroTrustHistory, setZeroTrustHistory] = useState<any[]>([])
+  const [zeroTrustLoading, setZeroTrustLoading] = useState(false)
 
   // 빠른 명령어 예시
   const quickCommands = [
@@ -30,8 +32,13 @@ const Dashboard: React.FC = () => {
   // 실제 데이터 로드
   useEffect(() => {
     loadDashboardData()
+    loadZeroTrustHistory()
     const interval = setInterval(loadDashboardData, 30000) // 30초마다 업데이트
-    return () => clearInterval(interval)
+    const historyInterval = setInterval(loadZeroTrustHistory, 60000) // 1분마다 히스토리 업데이트
+    return () => {
+      clearInterval(interval)
+      clearInterval(historyInterval)
+    }
   }, [])
 
   const loadDashboardData = async () => {
@@ -114,7 +121,7 @@ const Dashboard: React.FC = () => {
         setSystemStatus('정상')
       }
 
-      // 위협 탐지 데이터 (로그 기반)
+      // 위협 탐지 데이터
       setThreatData(generateThreatData())
 
     } catch (error) {
@@ -166,6 +173,35 @@ const Dashboard: React.FC = () => {
     }))
   }
 
+  // 제로트러스트 점수 히스토리 로드
+  const loadZeroTrustHistory = async () => {
+    try {
+      setZeroTrustLoading(true)
+      const response = await fetch(API_BASE_URL + '/diagnosis/history')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && Array.isArray(data.history)) {
+          // 최근 20개를 역순으로 정렬 (오래된 것부터 최신 순서)
+          const sortedHistory = [...data.history].reverse().map((entry, index) => ({
+            ...entry,
+            index: index + 1,
+            score: Math.round((entry.zeroTrustScore || 0) * 100) // 0-1 범위를 0-100으로 변환
+          }))
+          setZeroTrustHistory(sortedHistory)
+        } else {
+          setZeroTrustHistory([])
+        }
+      } else {
+        setZeroTrustHistory([])
+      }
+    } catch (error) {
+      console.error('제로트러스트 히스토리 로드 실패:', error)
+      setZeroTrustHistory([])
+    } finally {
+      setZeroTrustLoading(false)
+    }
+  }
+
   // 빠른 명령어 실행
   const executeQuickCommand = async (command: string) => {
     setCommandInput(command)
@@ -182,7 +218,7 @@ const Dashboard: React.FC = () => {
     try {
       let response
       
-      // 시스템 명령어와 Ziti 명령어 구분
+      // 시스템 명령어 & Ziti 명령어 구분
       if (cmd.includes('docker') || cmd.includes('ls') || cmd.includes('pwd') || cmd.includes('ps')) {
         response = await fetch(API_BASE_URL + '/system/execute', {
           method: 'POST',
@@ -204,13 +240,13 @@ const Dashboard: React.FC = () => {
         setCommandResult(`$ ${cmd}\n\n${result.stdout || result.output || '명령어가 성공적으로 실행되었습니다.'}\n\n실행 시간: ${result.executionTime || 0}ms`)
       } else {
         const result = await response.json().catch(() => ({ error: '응답 파싱 실패' }))
-        setCommandResult(`$ ${cmd}\n\n❌ 오류 발생:\n${result.error || result.stderr || '알 수 없는 오류'}`)
+        setCommandResult(`$ ${cmd}\n\n 오류 발생:\n${result.error || result.stderr || '알 수 없는 오류'}`)
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        setCommandResult(`$ ${cmd}\n\n⏱️ 명령어 실행 시간 초과 (30초)`)
+        setCommandResult(`$ ${cmd}\n\n 명령어 실행 시간 초과 (30초)`)
       } else {
-        setCommandResult(`$ ${cmd}\n\n🔌 네트워크 오류:\n${error.message}`)
+        setCommandResult(`$ ${cmd}\n\n 네트워크 오류:\n${error.message}`)
       }
     } finally {
       setExecuting(false)
@@ -367,6 +403,79 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 제로트러스트 성숙도 추이 */}
+      <div className="bg-white rounded-xl shadow-sm border p-6 col-span-full">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">제로트러스트 성숙도 추이</h2>
+            <p className="text-xl text-gray-600 mt-1">제로트러스트 점수</p>
+          </div>
+          {zeroTrustLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>}
+        </div>
+        {zeroTrustHistory.length > 0 ? (
+          <div className="w-full">
+            <ResponsiveContainer width="100%" height={500}>
+              <LineChart
+                data={zeroTrustHistory}
+                margin={{ top: 40, right: 50, left: 80, bottom: 70 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="index"
+                  label={{
+                    value: '진단',
+                    position: 'bottom',
+                    offset: 20,
+                    style: { fontSize: 16, fontWeight: 600 }
+                  }}
+                  tick={{ fontSize: 16, fontWeight: 500 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  label={{
+                    value: '점수',
+                    angle: -90,
+                    position: 'left',
+                    offset: 10,
+                    style: { textAnchor: 'middle', fontSize: 16, fontWeight: 600 }
+                  }}
+                  tick={{ fontSize: 16, fontWeight: 500 }}
+                  width={70}
+                />
+                <Tooltip 
+                  formatter={(value: any) => [`${value}점`, '제로트러스트 점수']}
+                  labelFormatter={(label) => `진단 #${label}`}
+                  contentStyle={{ fontSize: '14px', padding: '8px 12px', whiteSpace: 'nowrap' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke="#10113C" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10113C', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-[350px] text-gray-500">
+            {zeroTrustLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                <span>데이터 로딩 중...</span>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Shield className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>아직 진단 결과가 없습니다.</p>
+                <p className="text-sm mt-1">진단 평가를 실행하면 점수 추이가 표시됩니다.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 차트 섹션 */}
