@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="public/logo/Dapoz_banner.png" alt="DAPOZ" height="140">
+  <img src="public/logo/Dapoz_banner_full.png" alt="DAPOZ Zero-Trust Baseline & Assessment" width="100%">
 </p>
+
 
 # DAPOZ ZeroTrust Security Solution
 DAPOZ is a powerful ZeroTrust security model application solution.  
