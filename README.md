@@ -454,7 +454,9 @@ DAPOZ/
 
 ## 대시보드
 
-![Dashboard](https://github.com/komi22/DAPOZ/blob/main/DAPOZ.png?raw=true)
+<p align="center">
+  <img src="public/logo/Dapozer-MainDashboard.png" alt="DAPOZ Zero-Trust Baseline & Assessment" width="100%">
+</p>
 
 ## Zero Trust 진단 평가
 
