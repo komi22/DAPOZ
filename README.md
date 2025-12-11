@@ -1,4 +1,4 @@
-![header]# DAPOZ ZeroTrust Security Solution
+# DAPOZ ZeroTrust Security Solution
 DAPOZ is a powerful ZeroTrust security model application solution.  
 Companies that have not introduced ZeroTrust can adopt an initial baseline faster, and continue to strengthen the level of ZeroTrust through diagnosis and improvement.
 
