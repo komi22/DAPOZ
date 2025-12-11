@@ -544,5 +544,5 @@ DAPOZ는 오픈소스 프로젝트로, 모든 분의 기여와 협력을 환영�
 ---
 
 <p align="center">
-  <strong>Made with ❤️ for Zero Trust Security</strong>
+  <strong>Made with DAPOZER - DiAgnostics & POlicy for ZERotrust</strong>
 </p>
