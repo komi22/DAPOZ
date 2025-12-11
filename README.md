@@ -108,27 +108,10 @@ DAPOZ를 실행하기 위해 다음이 필요합니다:
 * **OpenAI API Key** (환경 변수로 설정)
 * **ChromaDB** (로컬 또는 원격 인스턴스)
 
----
-
-# [2] Getting Started
-
-## Prerequisites
-
-DAPOZ를 실행하기 위해 다음이 필요합니다:
-
-* **Node.js** 18.0 이상
-* **npm** 또는 **pnpm** 패키지 매니저
-* **Git** (저장소 클론용)
-
-### Optional (AI 챗봇 기능 사용 시)
-
-* **OpenAI API Key** (환경 변수로 설정)
-* **ChromaDB** (로컬 또는 원격 인스턴스)
-
 ## Install
 ### 1) Init Server
 Run the solution's server with the following command.
-```python
+```bash
 # DAPOZ Console
 npm run dev
 
@@ -149,9 +132,6 @@ AI 챗봇 기능을 사용하려면 `.env` 파일을 생성하고 OpenAI API 키
 # .env 파일 생성
 OPENAI_API_KEY=your-api-key-here
 ```
-
-
-
 ---
 
 # [3] Usage
@@ -455,7 +435,7 @@ RAG 기반 AI 챗봇을 통해 위협 개선 방안에 대해 질문할 수 있�
 
 ✔️ **체계적인 Zero Trust 도입 지원**
 
-DAPOZ는 Zero Trust의 5대 필라를 체계적으로 적용할 수 있는 도구와 가이드를 제공합니다. 초기 도입 단계부터 고도화 단계까지 단계별로 지원하여 조직의 Zero Trust 여정을 가속화합니다.
+DAPOZ는 Zero Trust의 7대 필라를 체계적으로 적용할 수 있는 도구와 가이드를 제공합니다. 초기 도입 단계부터 고도화 단계까지 단계별로 지원하여 조직의 Zero Trust 여정을 가속화합니다.
 
 ✔️ **실제 위협 기반 보안 강화**
 
