@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo/Dapoz_banner_full.png" alt="DAPOZ Zero-Trust Baseline & Assessment" width="100%">
+  <img src="public/logo/Dapoz_banner.png"  alt="DAPOZ Zero-Trust Baseline & Assessment" width="100%">
 </p>
 
 
