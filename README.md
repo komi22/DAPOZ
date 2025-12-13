@@ -43,22 +43,25 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 
 ### DAPOZ는 다음과 같은 핵심 가치를 제공합니다:
 
-* 🎯 **체계적인 Zero Trust 도입**  
-  Zero Trust의 7대 필라(User, Device, Application&Workload, Data, Network & Environment, Automation & Orchestration, Visibility & Analytics)를 체계적으로 적용하고 관리합니다.
+* **BASELINE 구축**  
+  DAPOZ는 제로트러스트 7필러 성숙도 초기 수준의 정책 적용이 가능하여 간편하고 효율적인 통합 보안 솔루션입니다. 각 필러에 해당하는 제로트러스트 정책을 DAPOZ 하나로 구현하고 자동화하여, 보다 안전하면서도 체계적인 보안 환경을 제공합니다. 이 모든 필러를 통합하고 자동화함으로써, 제로트러스트 보안 구현의 복잡함과 진입 장벽을 낮추어 기업의 안전성을 극대화하고 운영 효율성을 높입니다.
 
-* 🔍 **실시간 보안 진단 및 평가**  
-  체크리스트 기반 진단과 위협 시나리오 분석을 통해 현재 보안 수준을 정확히 파악합니다.
+* **BIC Loop 기반 진단 및 평가**  
+  DAPOZ는 자체 제작한 BIC loop 기반의 진단 및 평가 기능을 통해 기업의 제로트러스트 점수를 도출합니다. 해당 기능을 통해 제로트러스트를 고도화하고 지속적으로 관리할 수 있습니다.
+  - **BASELINE**: 국내외 공신력 있는 기관(KISA, NIST, ISO)의 가이드라인을 토대로, 제로트러스트 7필러에 대한 초기 수준의 베이스라인 정책을 수립하고 보안체계에 적용합니다.
+  - **INSIGHT**: BASELINE 구축 이후 환경 진단 및 평가를 수행합니다. 체크리스트 점수, 자산 중요도, 위협모델링 결과를 합산하여 보안 이행 수준과 위험 관리의 균형을 수치로 가시화합니다.
+  - **CONSOLIDATION**: 진단 및 평가 결과를 바탕으로 미흡한 보안 영역을 정책적으로 보완하고 개선 방향을 제시합니다. 위험도가 높은 항목에 대해 우선순위를 선정하고, 해당 부분을 개선할 수 있는 방향을 제시합니다.
 
-* 🛡️ **MITRE ATT&CK 기반 위협 분석**  
-  실제 이벤트 로그를 기반으로 위협을 탐지하고, 구체적인 개선 방안을 제시합니다.
+* **체계적인 위협 분석 및 평가**  
+  MITRE ATT&CK을 기반으로 위협 시나리오를 식별하고, 위협 시나리오별로 가능성(likelihood)와 영향도(Impact)를 합산하는 위험도 평가를 진행합니다. 한국인터넷진흥원 제로트러스트 가이드라인 2.0과 CISA Zero Trust Maturity Model 가이드라인을 기반으로 7필러별 체크리스트를 설계하여 관리적·기술적 통제 항목의 이행 여부를 점검합니다.
 
-* 🤖 **AI 기반 위협 개선 지원**  
+* **정량적 성숙도 평가**  
+  조직의 주요 자산의 기밀성, 무결성, 가용성(CIA)과 자산가치를 합산하여 최종 자산 중요도를 산출합니다. 기업의 로그와 사전에 식별한 위협 시나리오를 자동 매핑하고, 성숙도 수준 점수와 자산중요도, 위험지수를 합산하여 제로트러스트 최종 점수를 도출합니다. 도출한 최종 점수를 점수 구간별 성숙도 수준 정의에 따라 기업의 성숙도 수준을 진단할 수 있습니다.
+
+* **AI 기반 위협 개선 지원**  
   RAG(Retrieval-Augmented Generation) 기반 AI 챗봇을 통해 위협별 맞춤형 개선 방안을 제공합니다.
 
-* 📊 **실시간 모니터링 및 대시보드**  
-  Zero Trust 네트워크의 보안 현황을 실시간으로 모니터링하고 시각화합니다.
-
-* 📦 **SBOM 생성 및 관리**  
+* **SBOM 생성 및 관리**  
   소프트웨어 공급망 보안을 위한 SBOM(Software Bill of Materials)을 자동으로 생성하고 분석합니다.
 
 ---
@@ -67,17 +70,17 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 
 ### DAPOZ는 다음과 같은 기능을 제공합니다:
 
-* 🏗️ **Zero Trust 정책 적용**  
-  User, Device, Application&Workload, Data 등의 7대 필라를 통한 통합 보안 정책 적용 및 관리.
+* **Zero Trust 정책 적용**  
+  User, Device, Application&Workload, Data 등의 7대 필라를 통한 통합 보안 정책 적용 및 관리를 제공합니다.
 
-* 📋 **Zero Trust 진단 및 평가**  
-  체크리스트 기반 진단, 위협 시나리오 분석, 성숙도 평가를 통한 종합 보안 진단.
+* **Zero Trust 진단 및 평가**  
+  체크리스트 기반 진단, 위협 시나리오 분석, 성숙도 평가를 통한 종합 보안 진단을 수행합니다.
 
-* 🛡️ **위협 리포트 및 개선 방안**  
-  MITRE ATT&CK 프레임워크 기반 위협 탐지, 이벤트 로그 분석, 구체적인 개선 방안 제시.
+* **위협 리포트 및 개선 방안**  
+  MITRE ATT&CK 프레임워크 기반 위협 탐지, 이벤트 로그 분석, 구체적인 개선 방안을 제시합니다.
 
-* 📊 **실시간 대시보드**  
-  네트워크 트래픽, 보안 상태, 시스템 성능, Zero Trust 성숙도 추이를 실시간으로 모니터링.
+* **실시간 대시보드**  
+  네트워크 트래픽, 보안 상태, 시스템 성능, Zero Trust 성숙도 추이를 실시간으로 모니터링합니다.
 
 ---
 
@@ -91,6 +94,7 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
   <img src="https://img.shields.io/badge/LangChain-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangChain" />
   <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
   <img src="https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6B6B?style=flat-square" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/FossLight-SBOM-00A8E8?style=flat-square" alt="FossLight" />
   <img src="https://img.shields.io/badge/OpenZiti-Zero%20Trust-00A8E8?style=flat-square" alt="OpenZiti" />
   <img src="https://img.shields.io/badge/SaltStack-Automation-00A8E8?style=flat-square" alt="SaltStack" />
   <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-Framework-FF6B6B?style=flat-square" alt="MITRE ATT&CK" />
@@ -98,25 +102,25 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 
 DAPOZ는 다음과 같은 핵심 오픈소스 기술을 기반으로 구축되었습니다:
 
-### 🔐 핵심 인프라 및 보안 기술
+### 핵심 인프라 및 보안 기술
 
-* **OpenZiti** - Zero Trust 네트워킹 플랫폼. 마이크로 세분화 네트워크 정책 적용 및 관리.
-* **Keycloak** - 오픈소스 Identity and Access Management (IAM) 솔루션. Single Sign-On (SSO), 사용자 인증/인가 관리.
-* **SaltStack** - 인프라 자동화 및 원격 관리 플랫폼. 다수의 엔드포인트에 대한 원격 명령 실행, 상태 관리, 프로세스 모니터링.
-* **FossLight Scanner** - 오픈소스 라이선스 및 의존성 분석 도구. SBOM(Software Bill of Materials) 자동 생성.
-* **MITRE ATT&CK** - 사이버 공격 기법 및 전술 프레임워크. 위협 탐지 및 분석의 기준으로 활용.
+* **OpenZiti** - Zero Trust 네트워킹 플랫폼으로, 마이크로 세분화 네트워크 정책 적용 및 관리를 제공합니다.
+* **Keycloak** - 오픈소스 Identity and Access Management (IAM) 솔루션으로, Single Sign-On (SSO) 및 사용자 인증/인가 관리를 제공합니다.
+* **SaltStack** - 인프라 자동화 및 원격 관리 플랫폼으로, 다수의 엔드포인트에 대한 원격 명령 실행, 상태 관리, 프로세스 모니터링을 지원합니다.
+* **FossLight Scanner** - 오픈소스 라이선스 및 의존성 분석 도구로, SBOM(Software Bill of Materials)을 자동으로 생성합니다.
+* **MITRE ATT&CK** - 사이버 공격 기법 및 전술 프레임워크로, 위협 탐지 및 분석의 기준으로 활용됩니다.
 
-### 💻 애플리케이션 프레임워크
+### 애플리케이션 프레임워크
 
 * **React 18.3+** (UI 프레임워크) | **TypeScript 5.5+** (타입 안정성) | **Tailwind CSS 3.4+** (스타일링) | **Vite 5.4+** (빌드 도구)
 * **Node.js + Express 4.18+** (RESTful API 서버)
 * **Recharts 3.2+** (차트 시각화) | **ECharts 5.4+** (고급 차트)
 
-### 🤖 AI/LLM 기술
+### AI/LLM 기술
 
 * **LangChain 0.3+** (LLM 프레임워크) | **OpenAI API 4.20+** (GPT 모델) | **ChromaDB 1.8+** (RAG 벡터 저장소)
 
-### 🛠️ 기타 도구
+### 기타 도구
 
 * **XLSX 0.18+** (Excel 파일 처리) | **Lucide React** (아이콘 라이브러리)
 
@@ -167,7 +171,7 @@ OPENAI_API_KEY=your-api-key-here
 
 ### 프로덕션 배포 설치
 
-> **📦 설치 파일 다운로드**  
+> **설치 파일 다운로드**  
 > 모든 설치 파일은 [구글 드라이브](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv)에서 다운로드할 수 있습니다.
 > - **Master 폴더**: 어드민 서버 설치 파일
 > - **Agent 폴더**: 관리 단말 설치 파일
@@ -220,10 +224,10 @@ OPENAI_API_KEY=your-api-key-here
    - `fluent-bit-4.0.10-win64.exe`
    - `jdk-21.0.8_windows-x64_bin.exe`
    
-   > **⚠️ 주의**: Salt-Minion 설치 시 **DAPOZ Admin 장비의 IP 주소**를 입력해야 합니다.
+   > **주의**: Salt-Minion 설치 시 **DAPOZ Admin 장비의 IP 주소**를 입력해야 합니다.
 
 3. **Tika 파일 배치**
-   - `tika-app-3.2.3.jar` 파일을 **바탕화면**으로 옮깁니다.
+   - `tika-app-3.2.3.jar` 파일을 **바탕화면**으로 옮깁니다
 ---
 
 # [3] Usage
@@ -249,11 +253,11 @@ OPENAI_API_KEY=your-api-key-here
 
 #### 2.1 체크리스트 (`/zt-policy-diagnosis/checklist`)
 
-Network, Identity, Device, Application, Data 카테고리별 체크리스트를 작성하고 관리합니다.
+Network, Identity, Device, Application, Data 카테고리별 체크리스트를 작성하고 관리할 수 있습니다.
 
 #### 2.2 진단 평가 (`/zt-policy-diagnosis/diagnosis-evaluation`)
 
-Excel 파일을 업로드하여 Zero Trust 성숙도를 평가합니다:
+Excel 파일을 업로드하여 Zero Trust 성숙도를 평가할 수 있습니다:
 
 1. **체크리스트 파일 업로드**: Zero Trust 구현 항목 체크리스트
 2. **자산 파일 업로드**: 시스템 자산 및 위협 시나리오 정보
@@ -266,7 +270,7 @@ Excel 파일을 업로드하여 Zero Trust 성숙도를 평가합니다:
 
 #### 2.3 평가 (`/zt-policy-diagnosis/evaluation`)
 
-네트워크, 프로세스, 정책 문서별 Zero Trust 평가를 수행합니다.
+네트워크, 프로세스, 정책 문서별 Zero Trust 평가를 수행할 수 있습니다.
 
 ### 3. SBOM 생성
 
@@ -291,7 +295,7 @@ FossLight Scanner를 활용한 소스코드 SBOM 생성:
 
 **경로**: `/zt-policy-diagnosis/threat-report`
 
-진단 평가 결과를 기반으로 MITRE ATT&CK 기반 위협 분석 및 개선 방안을 제공합니다:
+진단 평가 결과를 기반으로 MITRE ATT&CK 기반 위협 분석 및 개선 방안을 제공합니다.
 
 * **탐지된 위협 시나리오**: 이벤트 로그 기반 위협 탐지
 * **위협별 상세 분석**: 
@@ -305,7 +309,7 @@ FossLight Scanner를 활용한 소스코드 SBOM 생성:
 
 **경로**: 위협 리포트 페이지 또는 우하단 챗봇 버튼
 
-RAG 기반 AI 챗봇을 통해 위협 개선 방안에 대해 질문할 수 있습니다:
+RAG 기반 AI 챗봇을 통해 위협 개선 방안에 대해 질문할 수 있습니다.
 
 * **MITRE ATT&CK 기반 답변**: Runbook 문서를 참고한 정확한 답변
 * **위협별 컨텍스트**: 특정 위협에 대한 맞춤형 질의응답
@@ -458,18 +462,19 @@ DAPOZ/
 
 ### "DAPOZ로 제로트러스트 도입을 스마트하고 간편하게"
 
-✔️ **제로트러스트 도입의 복잡성 최소화**
+**제로트러스트 도입의 복잡성 최소화**
 
 모든 기업이 복잡한 사전 준비나 전문 인력 없이도 부담없이 제로트러스트 보안을 도입할 수 있도록 기여하겠습니다.
 
-✔️ **제로트러스트 보안체계 도입 촉진**
+**제로트러스트 보안체계 도입 촉진**
 
 해외에서는 제로트러스트 도입이 활발히 진행되고 있으며, 국내에서는 KISA가 제로트러스트 가이드라인 2.0을 발표하여 그 중요성을 강조하고 있습니다. 이러한 환경 속에서 DAPOZ는 제로트러스트 도입의 진입 장벽을 낮추고, 체계적인 도입을 추진하여 제로트러스트 보안 체계를 촉진시키겠습니다.
 
-✔️ **기업 보안의 미래 대비**
+**기업 보안의 미래 대비**
+
 끊임없이 진화하는 사이버 위협에 대응하기 위해 지속적인 보안 기술 연구를 진행하며 장기적이고 혁신적인 보안 역량 강화를 도모하겠습니다.
 
-✔️ **오픈소스 기반 접근성**
+**오픈소스 기반 접근성**
 
 Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 규모와 예산에 관계없이 누구나 사용할 수 있습니다. 커뮤니티의 기여를 통해 지속적으로 발전합니다.
 
@@ -485,9 +490,9 @@ Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 
 
 # [8] Contact
 
-* 📧 **이메일**: BoB.DAPOZER.2025@gmail.com
-* 🐛 **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
-* 💬 **토론**: [GitHub Discussions](https://github.com/your-org/dapoz/discussions)
+* **이메일**: BoB.DAPOZER.2025@gmail.com
+* **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
+* **토론**: [GitHub Discussions](https://github.com/your-org/dapoz/discussions)
 
 DAPOZ는 오픈소스 프로젝트로, 모든 분의 기여와 협력을 환영합니다. 함께 더 안전한 디지털 환경을 만들어가요!
 
