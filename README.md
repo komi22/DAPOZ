@@ -13,6 +13,23 @@
   <a href="mailto:BoB.DAPOZER.2025@gmail.com?subject=DAPOZ Bug Report" target="_blank">Report Bug</a>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-18.0+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/React-18.3+-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5.5+-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/LangChain-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangChain" />
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6B6B?style=flat-square" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/Keycloak-IAM-00A8E8?style=flat-square&logo=keycloak&logoColor=white" alt="Keycloak" />
+  <img src="https://img.shields.io/badge/OpenZiti-Zero%20Trust-00A8E8?style=flat-square" alt="OpenZiti" />
+  <img src="https://img.shields.io/badge/SaltStack-Automation-00A8E8?style=flat-square" alt="SaltStack" />
+  <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-Framework-FF6B6B?style=flat-square" alt="MITRE ATT&CK" />
+  <img src="https://img.shields.io/badge/Recharts-3.2+-00A8E8?style=flat-square" alt="Recharts" />
+  <img src="https://img.shields.io/badge/ECharts-5.4+-FF6B6B?style=flat-square&logo=apache-echarts&logoColor=white" alt="ECharts" />
+  <img src="https://img.shields.io/badge/FossLight-SBOM-00A8E8?style=flat-square" alt="FossLight" />
+</p>
+
 ---
 
 ## 목차 (Table of Contents)
@@ -82,23 +99,6 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 ---
 
 ## Technologies
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Node.js-18.0+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/React-18.3+-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-5.5+-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/LangChain-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangChain" />
-  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
-  <img src="https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6B6B?style=flat-square" alt="ChromaDB" />
-  <img src="https://img.shields.io/badge/Keycloak-IAM-00A8E8?style=flat-square&logo=keycloak&logoColor=white" alt="Keycloak" />
-  <img src="https://img.shields.io/badge/OpenZiti-Zero%20Trust-00A8E8?style=flat-square" alt="OpenZiti" />
-  <img src="https://img.shields.io/badge/SaltStack-Automation-00A8E8?style=flat-square" alt="SaltStack" />
-  <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-Framework-FF6B6B?style=flat-square" alt="MITRE ATT&CK" />
-  <img src="https://img.shields.io/badge/Recharts-3.2+-00A8E8?style=flat-square" alt="Recharts" />
-  <img src="https://img.shields.io/badge/ECharts-5.4+-FF6B6B?style=flat-square&logo=apache-echarts&logoColor=white" alt="ECharts" />
-  <img src="https://img.shields.io/badge/FossLight-SBOM-00A8E8?style=flat-square" alt="FossLight" />
-</p>
 
 DAPOZ는 다음과 같은 핵심 오픈소스 기술을 기반으로 구축되었습니다:
 
