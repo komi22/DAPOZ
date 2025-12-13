@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../utils/api';
 
 import React, { useState, useEffect } from 'react'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import {Shield, Users, Server, Activity, AlertTriangle, CheckCircle, TrendingUp, Network, Zap, Terminal, Play, RefreshCw} from 'lucide-react'
+import {Shield, Users, Server, Activity, AlertTriangle, CheckCircle, TrendingUp, Network, Terminal, Play, RefreshCw} from 'lucide-react'
 
 const Dashboard: React.FC = () => {
   const [showQuickCommands, setShowQuickCommands] = useState(false)
@@ -10,7 +10,7 @@ const Dashboard: React.FC = () => {
   const [commandResult, setCommandResult] = useState('')
   const [executing, setExecuting] = useState(false)
   
-  // 실제 데이터 상태
+  // 데이터 상태
   const [networkData, setNetworkData] = useState<any[]>([])
   const [connectedDevices, setConnectedDevices] = useState(0)
   const [securityData, setSecurityData] = useState<any[]>([])
@@ -20,8 +20,10 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [zeroTrustHistory, setZeroTrustHistory] = useState<any[]>([])
   const [zeroTrustLoading, setZeroTrustLoading] = useState(false)
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
 
-  // 빠른 명령어 예시
+  // 빠른 명령어
   const quickCommands = [
     { name: '컨테이너 상태', command: 'docker ps', description: '실행 중인 컨테이너 확인' },
     { name: '라우터 목록', command: 'ziti edge list edge-routers', description: '네트워크 라우터 상태' },
@@ -33,11 +35,14 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadDashboardData()
     loadZeroTrustHistory()
+    loadRecentActivities()
     const interval = setInterval(loadDashboardData, 30000) // 30초마다 업데이트
     const historyInterval = setInterval(loadZeroTrustHistory, 60000) // 1분마다 히스토리 업데이트
+    const activitiesInterval = setInterval(loadRecentActivities, 30000) // 30초마다 활동 로그 업데이트
     return () => {
       clearInterval(interval)
       clearInterval(historyInterval)
+      clearInterval(activitiesInterval)
     }
   }, [])
 
@@ -137,7 +142,7 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  // 폴백 데이터 생성 함수들
+  // 폴백 데이터 생성 함수
   const generateFallbackNetworkData = () => {
     const now = new Date()
     return Array.from({ length: 6 }, (_, i) => {
@@ -173,6 +178,15 @@ const Dashboard: React.FC = () => {
     }))
   }
 
+  // 성숙도 수준 계산 함수
+  const getMaturityLevel = (score: number): string => {
+    if (score >= 0 && score <= 25) return '기존'
+    if (score >= 26 && score <= 50) return '초기'
+    if (score >= 51 && score <= 75) return '향상'
+    if (score >= 76 && score <= 100) return '최적화'
+    return '기존'
+  }
+
   // 제로트러스트 점수 히스토리 로드
   const loadZeroTrustHistory = async () => {
     try {
@@ -181,7 +195,7 @@ const Dashboard: React.FC = () => {
       if (response.ok) {
         const data = await response.json()
         if (data.success && Array.isArray(data.history)) {
-          // 최근 20개를 역순으로 정렬 (오래된 것부터 최신 순서)
+          // 최근 20개를 역순으로 정렬 
           const sortedHistory = [...data.history].reverse().map((entry, index) => ({
             ...entry,
             index: index + 1,
@@ -199,6 +213,82 @@ const Dashboard: React.FC = () => {
       setZeroTrustHistory([])
     } finally {
       setZeroTrustLoading(false)
+    }
+  }
+
+  // 최근 보안 활동 로드
+  const loadRecentActivities = async () => {
+    try {
+      setActivitiesLoading(true)
+      const response = await fetch(API_BASE_URL + '/logs/system')
+      if (response.ok) {
+        const logs = await response.json()
+        // 최근 10개만 가져오기
+        const recentLogs = Array.isArray(logs) ? logs.slice(0, 10) : []
+        setRecentActivities(recentLogs)
+      } else {
+        setRecentActivities([])
+      }
+    } catch (error) {
+      console.error('최근 활동 로드 실패:', error)
+      setRecentActivities([])
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
+
+  // 로그 레벨에 따른 아이콘과 색상 반환
+  const getActivityStyle = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'error':
+        return {
+          icon: Shield,
+          bgColor: 'bg-red-50',
+          iconColor: 'text-red-600',
+          label: '오류'
+        }
+      case 'warn':
+      case 'warning':
+        return {
+          icon: AlertTriangle,
+          bgColor: 'bg-yellow-50',
+          iconColor: 'text-yellow-600',
+          label: '경고'
+        }
+      case 'info':
+        return {
+          icon: CheckCircle,
+          bgColor: 'bg-green-50',
+          iconColor: 'text-green-600',
+          label: '정보'
+        }
+      default:
+        return {
+          icon: Activity,
+          bgColor: 'bg-blue-50',
+          iconColor: 'text-blue-600',
+          label: '활동'
+        }
+    }
+  }
+
+  // 시간 포맷팅 
+  const formatRelativeTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp)
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMs / 3600000)
+      const diffDays = Math.floor(diffMs / 86400000)
+
+      if (diffMins < 1) return '방금 전'
+      if (diffMins < 60) return `${diffMins}분 전`
+      if (diffHours < 24) return `${diffHours}시간 전`
+      if (diffDays < 7) return `${diffDays}일 전`
+      return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+    } catch {
+      return '알 수 없음'
     }
   }
 
@@ -408,74 +498,127 @@ const Dashboard: React.FC = () => {
       {/* 제로트러스트 성숙도 추이 */}
       <div className="bg-white rounded-xl shadow-sm border p-6 col-span-full">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">제로트러스트 성숙도 추이</h2>
-            <p className="text-xl text-gray-600 mt-1">제로트러스트 점수</p>
-          </div>
+          <h2 className="text-xl font-semibold text-gray-900">제로트러스트 성숙도 추이</h2>
           {zeroTrustLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>}
         </div>
-        {zeroTrustHistory.length > 0 ? (
-          <div className="w-full">
-            <ResponsiveContainer width="100%" height={500}>
-              <LineChart
-                data={zeroTrustHistory}
-                margin={{ top: 40, right: 50, left: 80, bottom: 70 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="index"
-                  label={{
-                    value: '진단',
-                    position: 'bottom',
-                    offset: 20,
-                    style: { fontSize: 16, fontWeight: 600 }
-                  }}
-                  tick={{ fontSize: 16, fontWeight: 500 }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  label={{
-                    value: '점수',
-                    angle: -90,
-                    position: 'left',
-                    offset: 10,
-                    style: { textAnchor: 'middle', fontSize: 16, fontWeight: 600 }
-                  }}
-                  tick={{ fontSize: 16, fontWeight: 500 }}
-                  width={70}
-                />
-                <Tooltip 
-                  formatter={(value: any) => [`${value}점`, '제로트러스트 점수']}
-                  labelFormatter={(label) => `진단 #${label}`}
-                  contentStyle={{ fontSize: '14px', padding: '8px 12px', whiteSpace: 'nowrap' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="#10113C" 
-                  strokeWidth={3}
-                  dot={{ fill: '#10113C', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        <div className="flex flex-col gap-6">
+          {/* 상단: 점수 및 성숙도 수준 카드 (오른쪽 배치, 그래프 끝과 맞추기) */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-end" style={{ marginRight: '50px' }}>
+            {(() => {
+              const currentScore = zeroTrustHistory.length > 0 
+                ? zeroTrustHistory[zeroTrustHistory.length - 1]?.score || 0 
+                : null
+              const maturityLevel = currentScore !== null ? getMaturityLevel(currentScore) : null
+              
+              return (
+                <>
+                  <div className="bg-[#10113C] rounded-lg p-4 shadow-lg w-full sm:w-auto sm:min-w-[200px]">
+                    <div className="text-sm font-medium text-white/80 mb-2">성숙도 수준:</div>
+                    {maturityLevel !== null ? (
+                      <div className="text-3xl font-bold text-white">{maturityLevel}</div>
+                    ) : (
+                      <div className="text-2xl text-white/60">-</div>
+                    )}
+                  </div>
+                  <div className="bg-[#10113C] rounded-lg p-4 shadow-lg w-full sm:w-auto sm:min-w-[200px]">
+                    <div className="text-sm font-medium text-white/80 mb-2">제로트러스트 점수:</div>
+                    {currentScore !== null ? (
+                      <div className="text-3xl font-bold text-white">{currentScore}점</div>
+                    ) : (
+                      <div className="text-2xl text-white/60">-</div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
           </div>
-        ) : (
-          <div className="flex items-center justify-center h-[350px] text-gray-500">
-            {zeroTrustLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
-                <span>데이터 로딩 중...</span>
-              </div>
-            ) : (
-              <div className="text-center">
-                <Shield className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>아직 진단 결과가 없습니다.</p>
-                <p className="text-sm mt-1">진단 평가를 실행하면 점수 추이가 표시됩니다.</p>
+          
+          {/* 하단: 차트 또는 메시지 */}
+          <div className="w-full">
+            {zeroTrustHistory.length > 0 ? (() => {
+              // 모든 점수 분석
+              const allScores = zeroTrustHistory.map(h => h.score)
+              const minScore = Math.min(...allScores)
+              const currentScore = zeroTrustHistory[zeroTrustHistory.length - 1]?.score || 50
+              
+              // 실제 점수를 사용하되, Y축 범위를 조정해서 차이를 더 크게 보이게
+              // 최저 점수를 기준으로 Y축 범위를 설정
+              const yMin = Math.max(0, minScore - 5)
+              const yMax = Math.max(60, currentScore + 10)
+              
+              // 실제 점수 그대로 사용 (압축하지 않음)
+              const transformedData = zeroTrustHistory.map(entry => ({
+                ...entry,
+                displayScore: entry.score
+              }))
+              
+              return (
+                <ResponsiveContainer width="100%" height={600}>
+                  <LineChart
+                    data={transformedData}
+                    margin={{ top: 50, right: 50, left: 50, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="index"
+                      label={{
+                        value: '진단',
+                        position: 'bottom',
+                        offset: 5,
+                        style: { fontSize: 16, fontWeight: 600, textAnchor: 'end', x: -50 }
+                      }}
+                      tick={{ fontSize: 16, fontWeight: 500 }}
+                    />
+                    <YAxis
+                      domain={[yMin, yMax]}
+                      label={{
+                        value: '점수',
+                        angle: 0,
+                        position: 'left',
+                        offset: 10,
+                        style: { textAnchor: 'middle', fontSize: 16, fontWeight: 600 }
+                      }}
+                      tick={{ fontSize: 16, fontWeight: 500 }}
+                      width={60}
+                    />
+                    <Tooltip 
+                      formatter={(_value: any, _name: any, props: any) => {
+                        // 실제 점수 표시
+                        const actualScore = props.payload.score
+                        return [`${actualScore}점`, '제로트러스트 점수']
+                      }}
+                      labelFormatter={(label) => `진단 #${label}`}
+                      contentStyle={{ fontSize: '14px', padding: '8px 12px', whiteSpace: 'nowrap' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="displayScore" 
+                      stroke="#10113C" 
+                      strokeWidth={3}
+                      dot={{ fill: '#10113C', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )
+            })() : (
+              <div className="flex items-center justify-center h-[600px] text-gray-500">
+                {zeroTrustLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                    <span>데이터 로딩 중...</span>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Shield className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>아직 진단 결과가 없습니다.</p>
+                    <p className="text-sm mt-1">진단 평가를 실행하면 점수 추이가 표시됩니다.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* 차트 섹션 */}
@@ -568,41 +711,45 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 최근 활동 */}
+      {/* 최근 보안 활동 */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">최근 보안 활동</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">최근 보안 활동</h2>
+          {activitiesLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>}
+        </div>
         <div className="space-y-3">
-          <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">새로운 클라이언트 연결 승인</p>
-              <p className="text-xs text-gray-500">장비: ziti-controller - 2분 전</p>
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity, index) => {
+              const style = getActivityStyle(activity.level)
+              const Icon = style.icon
+              return (
+                <div key={index} className={`flex items-center space-x-3 p-3 ${style.bgColor} rounded-lg`}>
+                  <Icon className={`w-5 h-5 ${style.iconColor}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{activity.message || '활동 없음'}</p>
+                    <p className="text-xs text-gray-500">
+                      {activity.level && `${style.label} • `}
+                      {formatRelativeTime(activity.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="flex items-center justify-center py-8 text-gray-500">
+              {activitiesLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                  <span>활동 로그 로딩 중...</span>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Activity className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>최근 보안 활동이 없습니다.</p>
+                </div>
+              )}
             </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-            <AlertTriangle className="w-5 h-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">의심스러운 트래픽 패턴 감지</p>
-              <p className="text-xs text-gray-500">소스: 외부 네트워크 - 5분 전</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg">
-            <Shield className="w-5 h-5 text-red-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">무단 접근 시도 차단</p>
-              <p className="text-xs text-gray-500">대상: 관리 서비스 - 8분 전</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-            <Zap className="w-5 h-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">정책 업데이트 적용 완료</p>
-              <p className="text-xs text-gray-500">정책 ID: POL-2024-001 - 15분 전</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
