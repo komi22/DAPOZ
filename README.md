@@ -146,12 +146,12 @@ OPENAI_API_KEY=your-api-key-here
 #### 어드민 서버 설치
 
 1. **사전 프로그램 설치 및 소스코드 다운로드**
-   - [Prerequisites for DAPOZ Admin.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) 다운로드 및 설치
+   - [Prerequisites for DAPOZ Admin.zip](https://drive.google.com/drive/folders/17gzOdflxHr7O0LGL03qo93ql2eaoi1JN) 다운로드 및 설치
    - DAPOZ 소스코드를 GitHub에서 ZIP 다운로드
 
 2. **이미지 파일 및 Install 파일 다운로드**
-   - [DAPOZ_images.tar](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) (약 2GB 이상)
-   - [Install.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv)
+   - [DAPOZ_images.tar](https://drive.google.com/drive/folders/17gzOdflxHr7O0LGL03qo93ql2eaoi1JN) (약 2GB 이상)
+   - [Install.zip](https://drive.google.com/drive/folders/17gzOdflxHr7O0LGL03qo93ql2eaoi1JN)
    - 원하는 망(네트워크)에 파일 옮기기
 
 3. **Docker 이미지 로드**
@@ -183,7 +183,7 @@ OPENAI_API_KEY=your-api-key-here
 #### 관리 단말 설치
 
 1. **Agent 파일 패키지 다운로드**
-   - [agent.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) 다운로드
+   - [agent.zip](https://drive.google.com/drive/folders/1DT3iDrY2yWNtOFB53SLOkyV2nmVPaht5) 다운로드
 
 2. **필수 프로그램 설치**
    다음 프로그램들을 모두 설치합니다:
