@@ -61,9 +61,6 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 * **AI 기반 위협 개선 지원**  
   RAG(Retrieval-Augmented Generation) 기반 AI 챗봇을 통해 위협별 맞춤형 개선 방안을 제공합니다.
 
-* **SBOM 생성 및 관리**  
-  소프트웨어 공급망 보안을 위한 SBOM(Software Bill of Materials)을 자동으로 생성하고 분석합니다.
-
 ---
 
 ## Features
