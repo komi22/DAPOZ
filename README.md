@@ -387,7 +387,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/identity-control.png" alt="신원 통제" width="100%">
+  <img src="public/screenshots/identity.png" alt="신원 통제" width="100%">
 </p>
 
 ## Network
@@ -395,7 +395,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/network-control.png" alt="네트워크 통제" width="100%">
+  <img src="public/screenshots/network.png" alt="네트워크 통제" width="100%">
 </p>
 
 ## Application
@@ -403,7 +403,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/process-control.png" alt="프로세스 통제" width="100%">
+  <img src="public/screenshots/application.png" alt="프로세스 통제" width="100%">
 </p>
 
 ## Data
@@ -411,7 +411,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/device-control.png" alt="디바이스 통제" width="100%">
+  <img src="public/screenshots/data.png" alt="디바이스 통제" width="100%">
 </p>
 
 ## Device
@@ -419,7 +419,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/data-control.png" alt="데이터 통제" width="100%">
+  <img src="public/screenshots/device.png" alt="데이터 통제" width="100%">
 </p>
 
 ## Diagnostic
@@ -427,7 +427,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/zt-policy-diagnosis.png" alt="Zero Trust 진단" width="100%">
+  <img src="public/screenshots/diagnostic.png" alt="Zero Trust 진단" width="100%">
 </p>
 
 ## Threat Report
@@ -435,7 +435,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/zt-checklist.png" alt="Zero Trust 체크리스트" width="100%">
+  <img src="public/screenshots/threat.png" alt="Zero Trust 체크리스트" width="100%">
 </p>
 
 ## Attack Test
@@ -443,7 +443,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/diagnosis-evaluation.png" alt="진단 평가" width="100%">
+  <img src="public/screenshots/attack.png" alt="진단 평가" width="100%">
 </p>
 
 ## AI 챗봇
