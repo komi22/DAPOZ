@@ -432,6 +432,10 @@ DAPOZ/
   <img src="public/screenshots/diagnostic.png" alt="Zero Trust 진단" width="100%">
 </p>
 
+<p align="center">
+  <img src="public/screenshots/diagnostic2.png" alt="Zero Trust 진단" width="100%">
+</p>
+
 ## Threat Report
 
 ---
@@ -454,6 +458,10 @@ DAPOZ/
 
 <p align="center">
   <img src="public/screenshots/ai-chatbot.png" alt="AI 챗봇" width="100%">
+</p>
+
+<p align="center">
+  <img src="public/screenshots/ai-chatbot2.png" alt="AI 챗봇" width="100%">
 </p>
 
 ---
