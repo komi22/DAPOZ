@@ -457,10 +457,6 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/ai-chatbot.png" alt="AI 챗봇" width="100%">
-</p>
-
-<p align="center">
   <img src="public/screenshots/ai-chatbot2.png" alt="AI 챗봇2" width="100%">
 </p>
 
