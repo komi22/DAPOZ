@@ -109,7 +109,10 @@ DAPOZ를 실행하기 위해 다음이 필요합니다:
 * **ChromaDB** (로컬 또는 원격 인스턴스)
 
 ## Install
-### 1) Init Server
+
+### 개발 환경 설치 (개발자용)
+
+#### 1) Init Server
 Run the solution's server with the following command.
 ```bash
 # DAPOZ Console
@@ -119,12 +122,12 @@ npm run dev
 node server/index.cjs
 ```
 
-### 2) Init Packages
+#### 2) Init Packages
 (under development)  
 ```(Administrator privileges) install.bat```  
 ```(Administrator privileges) run.bat```
 
-### 3) 환경 변수 설정 (선택사항)
+#### 3) 환경 변수 설정 (선택사항)
 
 AI 챗봇 기능을 사용하려면 `.env` 파일을 생성하고 OpenAI API 키를 설정하세요:
 
@@ -132,6 +135,66 @@ AI 챗봇 기능을 사용하려면 `.env` 파일을 생성하고 OpenAI API 키
 # .env 파일 생성
 OPENAI_API_KEY=your-api-key-here
 ```
+
+### 프로덕션 배포 설치
+
+> **📦 설치 파일 다운로드**  
+> 모든 설치 파일은 [구글 드라이브](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv)에서 다운로드할 수 있습니다.
+> - **Master 폴더**: 어드민 서버 설치 파일
+> - **Agent 폴더**: 관리 단말 설치 파일
+
+#### 어드민 서버 설치
+
+1. **사전 프로그램 설치 및 소스코드 다운로드**
+   - [Prerequisites for DAPOZ Admin.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) 다운로드 및 설치
+   - DAPOZ 소스코드를 GitHub에서 ZIP 다운로드
+
+2. **이미지 파일 및 Install 파일 다운로드**
+   - [DAPOZ_images.tar](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) (약 2GB 이상)
+   - [Install.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv)
+   - 원하는 망(네트워크)에 파일 옮기기
+
+3. **Docker 이미지 로드**
+   ```bash
+   docker load -i DAPOZ_images.tar
+   ```
+
+4. **Install 스크립트 실행**
+   ```bash
+   # install.zip 압축 해제
+   unzip Install.zip
+   
+   # install.sh 실행
+   ./install.sh
+   ```
+   - 실행 시 ziti password가 출력됩니다
+   - **중요**: password를 다른 곳에 저장하거나 기입해둡니다
+   - `Y`를 입력하고 Enter를 누릅니다
+
+5. **DAPOZ 소스코드 실행**
+   ```bash
+   # DAPOZ 소스코드 ZIP 압축 해제 (git clone 상관없음)
+   unzip DAPOZ-Solution.zip
+   
+   # start.sh 실행
+   ./start.sh
+   ```
+
+#### 관리 단말 설치
+
+1. **Agent 파일 패키지 다운로드**
+   - [agent.zip](https://drive.google.com/drive/folders/120-xg5vbVe-Ml79MSSfKHGuBCGcd_Gpv) 다운로드
+
+2. **필수 프로그램 설치**
+   다음 프로그램들을 모두 설치합니다:
+   - `Salt-Minion-3006.16-Py3-AMD64-Setup.exe`
+   - `fluent-bit-4.0.10-win64.exe`
+   - `jdk-21.0.8_windows-x64_bin.exe`
+   
+   > **⚠️ 주의**: Salt-Minion 설치 시 **DAPOZ Admin 장비의 IP 주소**를 입력해야 합니다.
+
+3. **Tika 파일 배치**
+   - `tika-app-3.2.3.jar` 파일을 **바탕화면**으로 옮깁니다.
 ---
 
 # [3] Usage
