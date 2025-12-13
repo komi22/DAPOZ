@@ -7,13 +7,31 @@
 </p>
 
 <p align="center">
-  <a href="#-why-dapoz">Why DAPOZ?</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-technologies">Technologies</a> •
-  <a href="#-getting-started">Getting Started</a> •
-  <a href="#-usage">Usage</a> •
-  <a href="#-license">License</a>
+  <a href="#1-about-the-project">More About DAPOZ</a> •
+  <a href="https://www.youtube.com/watch?v=GvnQ0POClyg" target="_blank">View Demo</a> •
+  <a href="https://drive.google.com/file/d/1021UBvcwmeNuvWFx3tkc75LPeq3y4My2/view?usp=drive_link" target="_blank">Download Brochure</a> •
+  <a href="https://github.com/YOUR_ORG/dapoz/issues" target="_blank">Report Bug</a>
 </p>
+
+---
+
+## 📑 목차 (Table of Contents)
+
+- [About the Project](#1-about-the-project)
+  - [Why DAPOZ?](#why-dapoz)
+  - [Features](#features)
+  - [Technologies](#technologies)
+- [Getting Started](#2-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Install](#install)
+- [Usage](#3-usage)
+- [Architecture](#4-architecture)
+- [Screenshots](#5-screenshots)
+- [DAPOZ's VISION](#6-dapozs-vision)
+- [Contributing](#7-contributing)
+- [License](#8-license)
+- [Acknowledgments](#9-acknowledgments)
+- [Contact](#10-contact)
 
 ---
 
@@ -66,6 +84,19 @@ Zero Trust를 도입하지 않은 기업도 **초기 기준선을 빠르게 확�
 ---
 
 ## Technologies
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-18.0+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/React-18.3+-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5.5+-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/LangChain-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangChain" />
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" />
+  <img src="https://img.shields.io/badge/ChromaDB-Vector%20Store-FF6B6B?style=flat-square" alt="ChromaDB" />
+  <img src="https://img.shields.io/badge/OpenZiti-Zero%20Trust-00A8E8?style=flat-square" alt="OpenZiti" />
+  <img src="https://img.shields.io/badge/SaltStack-Automation-00A8E8?style=flat-square" alt="SaltStack" />
+  <img src="https://img.shields.io/badge/MITRE%20ATT%26CK-Framework-FF6B6B?style=flat-square" alt="MITRE ATT&CK" />
+</p>
 
 DAPOZ는 다음과 같은 핵심 오픈소스 기술을 기반으로 구축되었습니다:
 
@@ -302,132 +333,7 @@ RAG 기반 AI 챗봇을 통해 위협 개선 방안에 대해 질문할 수 있�
 
 ---
 
-# [4] API Reference
-
-## LLM API
-
-### POST `/api/llm/index-runbooks`
-
-MITRE ATT&CK Runbook을 ChromaDB에 인덱싱합니다.
-
-**Request Body**:
-```json
-{
-  "force": false  // true: 기존 collection 삭제 후 재인덱싱
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Runbooks 인덱싱 완료",
-  "chunkCount": 1234
-}
-```
-
-### POST `/api/llm/chat`
-
-AI 챗봇 질의응답 API.
-
-**Request Body**:
-```json
-{
-  "question": "T1003 자격증명덤프 방어 방법",
-  "technique_id": "T1003",  // 선택사항
-  "context": {  // 선택사항
-    "technique_id": "T1003",
-    "threat_type_kr": "크리덴셜 공격",
-    "technique_name_kr": "자격 증명 덤프",
-    "event_ids": ["4648"]
-  }
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "answer": "자격 증명 덤프 공격을 방어하기 위해서는...",
-  "sources": [
-    {
-      "technique_id": "T1003",
-      "content": "..."
-    }
-  ]
-}
-```
-
-## SBOM API
-
-### POST `/sbom/source/scan`
-
-소스코드 SBOM 스캔을 시작합니다.
-
-**Request Body**:
-```json
-{
-  "repoUrl": "https://github.com/org/repo.git",
-  "branch": "main",  // 선택사항
-  "subdir": "src/",  // 선택사항
-  "mode": "SOURCE",
-  "authType": "token",  // "none" | "token"
-  "authValue": "ghp_xxx",  // token인 경우
-  "outputFormat": "opossum"  // "excel" | "csv" | "yaml" | "opossum" | "spdx-json" 등
-}
-```
-
-**Response**:
-```json
-{
-  "jobId": "job-123",
-  "meta": {
-    "installedCount": 0,
-    "pathCount": 0,
-    "dirCount": 0,
-    "progress": 0
-  }
-}
-```
-
-### GET `/sbom/jobs/:jobId/status`
-
-SBOM 스캔 작업 상태를 조회합니다.
-
-**Response**:
-```json
-{
-  "status": "running",  // "idle" | "queued" | "running" | "done" | "error" | "cancelled"
-  "logAppend": ["로그 메시지..."],
-  "installedCount": 150,
-  "pathCount": 1200,
-  "dirCount": 50,
-  "progress": 75
-}
-```
-
-### GET `/sbom/results`
-
-생성된 SBOM 결과 목록을 조회합니다.
-
-**Response**:
-```json
-[
-  {
-    "id": "result-123",
-    "filename": "sbom-2024-12-03.xlsx",
-    "createdAt": "2024-12-03T10:30:00Z"
-  }
-]
-```
-
-### GET `/sbom/results/:resultId/download`
-
-SBOM 결과 파일을 다운로드합니다.
-
----
-
-# [5] Architecture
+# [4] Architecture
 
 ## 시스템 구조
 
@@ -466,7 +372,7 @@ DAPOZ/
 
 ---
 
-# [6] Screenshots
+# [5] Screenshots
 
 ## 대시보드
 
@@ -492,7 +398,7 @@ RAG 기반 AI 챗봇을 통해 위협 개선 방안에 대해 질문할 수 있�
 
 ---
 
-# [7] DAPOZ's VISION
+# [6] DAPOZ's VISION
 
 ### "DAPOZ는 조직이 Zero Trust 보안 모델을 체계적으로 도입하고 지속적으로 개선할 수 있도록 지원하여, 안전하고 신뢰할 수 있는 디지털 환경을 구축합니다."
 
@@ -514,7 +420,7 @@ Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 
 
 ---
 
-# [8] Contributing
+# [7] Contributing
 
 DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
@@ -535,7 +441,7 @@ DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
 ---
 
-# [9] License
+# [8] License
 
 이 프로젝트는 **Apache License 2.0** 라이선스 하에 배포됩니다.
 
@@ -543,7 +449,7 @@ DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
 ---
 
-# [10] Acknowledgments
+# [9] Acknowledgments
 
 * 이 솔루션은 **Best of Best 14 Security Consulting Track**의 지원으로 개발되었습니다.
 * **MITRE ATT&CK** 프레임워크를 기반으로 위협 분석 기능을 제공합니다.
@@ -551,7 +457,7 @@ DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
 ---
 
-# [11] Contact
+# [10] Contact
 
 * 📧 **이메일**: BoB.DAPOZER.2025@gmail.com
 * 🐛 **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
