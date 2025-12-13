@@ -29,8 +29,7 @@
 - [Screenshots](#5-screenshots)
 - [DAPOZ's VISION](#6-dapozs-vision)
 - [License](#7-license)
-- [Acknowledgments](#8-acknowledgments)
-- [Contact](#9-contact)
+- [Contact](#8-contact)
 
 ---
 
@@ -484,15 +483,7 @@ Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 
 
 ---
 
-# [8] Acknowledgments
-
-* 이 솔루션은 **Best of Best 14 Security Consulting Track**의 지원으로 개발되었습니다.
-* **MITRE ATT&CK** 프레임워크를 기반으로 위협 분석 기능을 제공합니다.
-* **FossLight Scanner**를 활용하여 SBOM 생성 기능을 제공합니다.
-
----
-
-# [9] Contact
+# [8] Contact
 
 * 📧 **이메일**: BoB.DAPOZER.2025@gmail.com
 * 🐛 **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
