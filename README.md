@@ -403,7 +403,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/application.png" alt="프로세스 통제" width="100%">
+  <img src="public/screenshots/application.png" alt="어플리케이션 통제" width="100%">
 </p>
 
 ## Data
@@ -411,7 +411,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/data.png" alt="디바이스 통제" width="100%">
+  <img src="public/screenshots/data.png" alt="데이터 통제" width="100%">
 </p>
 
 ## Device
@@ -419,7 +419,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/device.png" alt="데이터 통제" width="100%">
+  <img src="public/screenshots/device.png" alt="디바이스 통제" width="100%">
 </p>
 
 ## Diagnostic
@@ -435,7 +435,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/threat.png" alt="Zero Trust 체크리스트" width="100%">
+  <img src="public/screenshots/threat.png" alt="Zero Trust 위협 리포트" width="100%">
 </p>
 
 ## Attack Test
@@ -443,7 +443,7 @@ DAPOZ/
 ---
 
 <p align="center">
-  <img src="public/screenshots/attack.png" alt="진단 평가" width="100%">
+  <img src="public/screenshots/attack.png" alt="공격 테스트" width="100%">
 </p>
 
 ## AI 챗봇
