@@ -10,7 +10,7 @@
   <a href="#1-about-the-project">More About DAPOZ</a> •
   <a href="https://www.youtube.com/watch?v=GvnQ0POClyg" target="_blank">View Demo</a> •
   <a href="https://drive.google.com/file/d/1021UBvcwmeNuvWFx3tkc75LPeq3y4My2/view?usp=drive_link" target="_blank">Download Brochure</a> •
-  <a href="https://github.com/YOUR_ORG/dapoz/issues" target="_blank">Report Bug</a>
+  <a href="mailto:BoB.DAPOZER.2025@gmail.com?subject=DAPOZ Bug Report" target="_blank">Report Bug</a>
 </p>
 
 ---
