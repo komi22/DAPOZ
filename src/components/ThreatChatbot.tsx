@@ -219,24 +219,6 @@ const ThreatChatbot: React.FC<ThreatChatbotProps> = ({
                       {message.content}
                     </p>
 
-                    {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-xs text-gray-500 mb-1">참고 자료:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {message.sources.map((source, idx) => (
-                            source.technique_id && (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-indigo-50 text-indigo-700 border border-indigo-200"
-                              >
-                                {source.technique_id}
-                              </span>
-                            )
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     <p
                       className={`text-xs mt-1 ${
                         message.role === 'user' ? 'text-purple-100' : 'text-gray-400'

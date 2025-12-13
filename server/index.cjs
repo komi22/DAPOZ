@@ -2194,6 +2194,9 @@ diagnosisRouter.get('/history', (req, res) => {
 // 라우터 마운트
 app.use('/api/diagnosis', diagnosisRouter);
 
+// LLM 라우터 등록
+const llmRouter = require('./routes/llm.cjs')
+app.use('/api/llm', llmRouter)
 
 // 스케줄러 히스토리 클리어
 function mountHistoryClear(app) {
