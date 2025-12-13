@@ -374,39 +374,15 @@ DAPOZ/
 
 # [5] Screenshots
 
-## 대시보드
+## Dashboard
 
 ---
 
 <p align="center">
-  <img src="public/logo/Dapozer-MainDashboard.png" alt="DAPOZ 대시보드" width="100%">
+  <img src="public/screenshots/Dapozer-MainDashboard.png" alt="DAPOZ 대시보드" width="100%">
 </p>
 
-## 로그인
-
----
-
-<p align="center">
-  <img src="public/screenshots/login.png" alt="DAPOZ 로그인" width="100%">
-</p>
-
-## Zero Trust 정책 적용
-
----
-
-<p align="center">
-  <img src="public/screenshots/zt-policy-apply.png" alt="Zero Trust 정책 적용" width="100%">
-</p>
-
-## 통합 통제
-
----
-
-<p align="center">
-  <img src="public/screenshots/integrated-control.png" alt="통합 통제" width="100%">
-</p>
-
-## 신원 통제
+## Identity
 
 ---
 
@@ -414,7 +390,7 @@ DAPOZ/
   <img src="public/screenshots/identity-control.png" alt="신원 통제" width="100%">
 </p>
 
-## 네트워크 통제
+## Network
 
 ---
 
@@ -422,7 +398,7 @@ DAPOZ/
   <img src="public/screenshots/network-control.png" alt="네트워크 통제" width="100%">
 </p>
 
-## 프로세스 통제
+## Application
 
 ---
 
@@ -430,7 +406,7 @@ DAPOZ/
   <img src="public/screenshots/process-control.png" alt="프로세스 통제" width="100%">
 </p>
 
-## 디바이스 통제
+## Data
 
 ---
 
@@ -438,7 +414,7 @@ DAPOZ/
   <img src="public/screenshots/device-control.png" alt="디바이스 통제" width="100%">
 </p>
 
-## 데이터 통제
+## Device
 
 ---
 
@@ -446,7 +422,7 @@ DAPOZ/
   <img src="public/screenshots/data-control.png" alt="데이터 통제" width="100%">
 </p>
 
-## Zero Trust 진단
+## Diagnostic
 
 ---
 
@@ -454,7 +430,7 @@ DAPOZ/
   <img src="public/screenshots/zt-policy-diagnosis.png" alt="Zero Trust 진단" width="100%">
 </p>
 
-## 체크리스트
+## Threat Report
 
 ---
 
@@ -462,36 +438,12 @@ DAPOZ/
   <img src="public/screenshots/zt-checklist.png" alt="Zero Trust 체크리스트" width="100%">
 </p>
 
-## 진단 평가
+## Attack Test
 
 ---
 
 <p align="center">
   <img src="public/screenshots/diagnosis-evaluation.png" alt="진단 평가" width="100%">
-</p>
-
-## 평가
-
----
-
-<p align="center">
-  <img src="public/screenshots/zt-evaluation.png" alt="Zero Trust 평가" width="100%">
-</p>
-
-## SBOM 생성
-
----
-
-<p align="center">
-  <img src="public/screenshots/sbom.png" alt="SBOM 생성" width="100%">
-</p>
-
-## 위협 리포트
-
----
-
-<p align="center">
-  <img src="public/screenshots/threat-report.png" alt="위협 리포트" width="100%">
 </p>
 
 ## AI 챗봇
