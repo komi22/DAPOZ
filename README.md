@@ -15,7 +15,7 @@
 
 ---
 
-## 📑 목차 (Table of Contents)
+## 목차 (Table of Contents)
 
 - [About the Project](#1-about-the-project)
   - [Why DAPOZ?](#why-dapoz)
@@ -28,10 +28,9 @@
 - [Architecture](#4-architecture)
 - [Screenshots](#5-screenshots)
 - [DAPOZ's VISION](#6-dapozs-vision)
-- [Contributing](#7-contributing)
-- [License](#8-license)
-- [Acknowledgments](#9-acknowledgments)
-- [Contact](#10-contact)
+- [License](#7-license)
+- [Acknowledgments](#8-acknowledgments)
+- [Contact](#9-contact)
 
 ---
 
@@ -458,19 +457,18 @@ DAPOZ/
 
 # [6] DAPOZ's VISION
 
-### "DAPOZ는 조직이 Zero Trust 보안 모델을 체계적으로 도입하고 지속적으로 개선할 수 있도록 지원하여, 안전하고 신뢰할 수 있는 디지털 환경을 구축합니다."
+### "DAPOZ로 제로트러스트 도입을 스마트하고 간편하게"
 
-✔️ **체계적인 Zero Trust 도입 지원**
+✔️ **제로트러스트 도입의 복잡성 최소화**
 
-DAPOZ는 Zero Trust의 7대 필라를 체계적으로 적용할 수 있는 도구와 가이드를 제공합니다. 초기 도입 단계부터 고도화 단계까지 단계별로 지원하여 조직의 Zero Trust 여정을 가속화합니다.
+모든 기업이 복잡한 사전 준비나 전문 인력 없이도 부담없이 제로트러스트 보안을 도입할 수 있도록 기여하겠습니다.
 
-✔️ **실제 위협 기반 보안 강화**
+✔️ **제로트러스트 보안체계 도입 촉진**
 
-MITRE ATT&CK 프레임워크와 실제 이벤트 로그 분석을 통해 이론적 보안이 아닌 **실제 발생 가능한 위협**에 집중합니다. 이를 통해 보안 투자 대비 효과를 극대화합니다.
+해외에서는 제로트러스트 도입이 활발히 진행되고 있으며, 국내에서는 KISA가 제로트러스트 가이드라인 2.0을 발표하여 그 중요성을 강조하고 있습니다. 이러한 환경 속에서 DAPOZ는 제로트러스트 도입의 진입 장벽을 낮추고, 체계적인 도입을 추진하여 제로트러스트 보안 체계를 촉진시키겠습니다.
 
-✔️ **AI 기반 지능형 보안 관리**
-
-RAG 기반 AI 챗봇을 통해 위협별 맞춤형 개선 방안을 제공합니다. 복잡한 보안 정책과 설정을 이해하기 쉽게 설명하고, 실무진이 즉시 적용할 수 있는 구체적인 가이드를 제공합니다.
+✔️ **기업 보안의 미래 대비**
+끊임없이 진화하는 사이버 위협에 대응하기 위해 지속적인 보안 기술 연구를 진행하며 장기적이고 혁신적인 보안 역량 강화를 도모하겠습니다.
 
 ✔️ **오픈소스 기반 접근성**
 
@@ -478,28 +476,7 @@ Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 
 
 ---
 
-# [7] Contributing
-
-DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
-
-## 기여 방법
-
-1. **Fork** 저장소를 포크합니다.
-2. **Feature Branch** 생성: `git checkout -b feature/amazing-feature`
-3. **Commit** 변경사항: `git commit -m 'Add some amazing feature'`
-4. **Push** 브랜치: `git push origin feature/amazing-feature`
-5. **Pull Request** 생성
-
-## 기여 가이드라인
-
-* 코드 스타일을 준수해주세요 (ESLint 설정 참고)
-* 새로운 기능 추가 시 테스트를 작성해주세요
-* 문서를 업데이트해주세요
-* 커밋 메시지는 명확하게 작성해주세요
-
----
-
-# [8] License
+# [7] License
 
 이 프로젝트는 **Apache License 2.0** 라이선스 하에 배포됩니다.
 
@@ -507,7 +484,7 @@ DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
 ---
 
-# [9] Acknowledgments
+# [8] Acknowledgments
 
 * 이 솔루션은 **Best of Best 14 Security Consulting Track**의 지원으로 개발되었습니다.
 * **MITRE ATT&CK** 프레임워크를 기반으로 위협 분석 기능을 제공합니다.
@@ -515,7 +492,7 @@ DAPOZ는 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
 ---
 
-# [10] Contact
+# [9] Contact
 
 * 📧 **이메일**: BoB.DAPOZER.2025@gmail.com
 * 🐛 **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
