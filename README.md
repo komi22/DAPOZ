@@ -495,7 +495,6 @@ Apache 2.0 라이선스로 제공되는 오픈소스 솔루션으로, 조직의 
 # [8] Contact
 
 * **이메일**: BoB.DAPOZER.2025@gmail.com
-* **이슈 리포트**: [GitHub Issues](https://github.com/your-org/dapoz/issues)
 * **토론**: [GitHub Discussions](https://github.com/your-org/dapoz/discussions)
 
 DAPOZ는 오픈소스 프로젝트로, 모든 분의 기여와 협력을 환영합니다. 함께 더 안전한 디지털 환경을 만들어가요!
