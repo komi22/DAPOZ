@@ -141,26 +141,8 @@ DAPOZ를 실행하기 위해 다음이 필요합니다:
 * **OpenAI API Key** (환경 변수로 설정)
 * **ChromaDB** (로컬 또는 원격 인스턴스)
 
-## Install
 
-### 개발 환경 설치 (개발자용)
-
-#### 1) Init Server
-Run the solution's server with the following command.
-```bash
-# DAPOZ Console
-npm run dev
-
-# DAPOZ Api
-node server/index.cjs
-```
-
-#### 2) Init Packages
-(under development)  
-```(Administrator privileges) install.bat```  
-```(Administrator privileges) run.bat```
-
-#### 3) 환경 변수 설정 (선택사항)
+#### 환경 변수 설정 (선택사항)
 
 AI 챗봇 기능을 사용하려면 `.env` 파일을 생성하고 OpenAI API 키를 설정하세요:
 
