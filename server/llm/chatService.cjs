@@ -324,18 +324,6 @@ function getSimpleResponse(question) {
   if (/고마워|감사|thank/.test(question)) {
     return '천만에요! 추가로 궁금한 점이 있으시면 언제든지 질문해주세요.'
   }
-  // 이스터에그: 제작자 질문
-  if (/만든.*사람|누가.*만들|제작자|만든이|만든.*누구|만든.*분|개발자|creator|who.*made|who.*created/i.test(question)) {
-    return 'BoB 14기 최강 미모 소유자 홍혜원님입니다!'
-  }
-  // 이스터에그: 개인정보보호의 신
-  if (/개인정보보호.*신|개인정보.*신|정보보호.*신|privacy.*god|data.*protection.*god/i.test(question)) {
-    return 'BoB 14기 최강 귀요미 김채은님입니다!'
-  }
-  // 이스터에그: 오세희님
-  if (/쿼카.*다음.*만지|쿼카.*벌금|만지면.*벌금|쿼카.*다음|quokka.*next|quokka.*touch/i.test(question)) {
-    return 'BoB 14기의 정책이면 정책 기술이면 기술! 다방면의 천재 오세희님입니다!'
-  }
   // 이스터에그: DAPOZ 솔루션 소개
   if (/dapoz.*뭐|dapoz.*무엇|dapoz.*소개|dapoz.*란|dapoz.*이란|다포즈.*뭐|다포즈.*무엇|다포즈.*소개|다포즈.*란|다포즈.*이란|what.*dapoz|what.*is.*dapoz/i.test(question)) {
     return 'DAPOZ(Diagnostics & Policy for Zero Trust)는 조직이 Zero Trust 보안 모델을 체계적으로 도입하고 관리할 수 있도록 돕는 종합 보안 솔루션입니다. Zero Trust의 7대 필라를 통한 정책 적용, 실시간 보안 진단 및 평가, MITRE ATT&CK 기반 위협 분석, AI 기반 위협 개선 지원, 실시간 모니터링 대시보드, SBOM 생성 및 관리 등의 기능을 제공합니다.'
