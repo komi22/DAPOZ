@@ -1880,9 +1880,56 @@ app.post('/api/keycloak/execute', async (req, res) => {
 })
 
 // 서버 시작
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   saveLog('info', `백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
   console.log(`백엔드 서버가 포트 ${PORT}에서 실행 중입니다`)
+  
+  // ChromaDB 자동 인덱싱 체크 및 실행
+  setTimeout(async () => {
+    try {
+      const { getCollectionCount, testConnection } = require('./llm/vectorStore.cjs')
+      const { loadRunbookDocuments } = require('./llm/documentLoader.cjs')
+      const { addDocuments } = require('./llm/vectorStore.cjs')
+      
+      console.log('📚 ChromaDB 상태 확인 중...')
+      
+      // ChromaDB 연결 확인
+      const isConnected = await testConnection()
+      if (!isConnected) {
+        console.warn('⚠️  ChromaDB에 연결할 수 없습니다. 자동 인덱싱을 건너뜁니다.')
+        return
+      }
+      
+      // Collection 문서 수 확인
+      const count = await getCollectionCount()
+      
+      if (count === 0) {
+        console.log('📚 Runbook 데이터가 없습니다. 자동 인덱싱을 시작합니다...')
+        
+        // Runbook 문서 로드
+        const documents = loadRunbookDocuments()
+        
+        if (documents.length === 0) {
+          console.warn('⚠️  인덱싱할 runbook 파일이 없습니다.')
+          return
+        }
+        
+        // 문서 인덱싱
+        await addDocuments(documents)
+        
+        const finalCount = await getCollectionCount()
+        const uniqueFiles = new Set(documents.map(doc => doc.metadata.source))
+        
+        console.log(`✓ Runbook 자동 인덱싱 완료: ${uniqueFiles.size}개 파일 → ${documents.length}개 청크 → ${finalCount}개 문서`)
+        saveLog('info', `Runbook 자동 인덱싱 완료: ${uniqueFiles.size}개 파일`)
+      } else {
+        console.log(`✓ ChromaDB에 이미 ${count}개의 문서가 인덱싱되어 있습니다.`)
+      }
+    } catch (error) {
+      console.error('❌ ChromaDB 자동 인덱싱 실패:', error)
+      saveLog('error', `ChromaDB 자동 인덱싱 실패: ${error.message}`)
+    }
+  }, 3000) // 3초 후 실행 (ChromaDB 준비 시간 확보)
 })
 
 // 프로세스 종료 시 로그 저장
