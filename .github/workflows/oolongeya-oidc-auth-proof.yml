@@ -1,0 +1,21 @@
+name: Oolongeya Polygon OIDC auth proof
+
+on:
+  push:
+    branches:
+      - oolongeya-oidc-auth-proof
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  auth-proof:
+    uses: 0xPolygon/pipelines/.github/workflows/gcp_pipeline_release_image.yaml@main
+    with:
+      image_name: oolongeya-never-built
+      image_tag: oolongeya-auth-only
+      dockerfile_path: DOES_NOT_EXIST
+      dockerfile_context: .
+      checkout_ref: oolongeya-oidc-auth-proof
+      platforms: linux/amd64
