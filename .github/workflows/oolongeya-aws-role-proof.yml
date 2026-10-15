@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Request the published deployment role
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
           aws-region: eu-west-1
           role-to-assume: arn:aws:iam::042947190491:role/api-polygon-tokens-GithubActionsRole
