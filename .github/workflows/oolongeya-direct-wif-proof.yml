@@ -1,0 +1,31 @@
+name: Oolongeya Polygon direct WIF permission proof
+
+on:
+  push:
+    branches:
+      - oolongeya-oidc-auth-proof
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  permission-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/23849419004/locations/global/workloadIdentityPools/polygonlabs-shared-prod/providers/oidc-shared-prod
+          create_credentials_file: true
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Test direct production Artifact Registry permissions without writing
+        shell: bash
+        run: |
+          set -euo pipefail
+          access_token="$(gcloud auth application-default print-access-token)"
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${access_token}" \
+            -H "Content-Type: application/json" \
+            --data '{"permissions":["artifactregistry.repositories.uploadArtifacts","artifactregistry.repositories.downloadArtifacts","artifactregistry.repositories.list"]}' \
+            'https://artifactregistry.googleapis.com/v1/projects/prj-polygonlabs-shared-prod/locations/europe-west2/repositories/polygonlabs-docker-prod:testIamPermissions'
