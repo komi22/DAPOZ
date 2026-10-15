@@ -19,5 +19,7 @@ jobs:
           aws-region: eu-west-1
           role-to-assume: arn:aws:iam::042947190491:role/api-polygon-tokens-GithubActionsRole
           role-session-name: oolongeya-read-only-proof
+          role-duration-seconds: 900
+          retry-max-attempts: 2
       - name: Print only the assumed AWS identity
         run: aws sts get-caller-identity
