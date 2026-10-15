@@ -27,5 +27,5 @@ jobs:
             -X POST \
             -H "Authorization: Bearer ${access_token}" \
             -H "Content-Type: application/json" \
-            --data '{"permissions":["artifactregistry.repositories.uploadArtifacts","artifactregistry.repositories.downloadArtifacts","artifactregistry.repositories.list"]}' \
+            --data '{"permissions":["artifactregistry.repositories.uploadArtifacts","artifactregistry.repositories.downloadArtifacts"]}' \
             'https://artifactregistry.googleapis.com/v1/projects/prj-polygonlabs-shared-prod/locations/europe-west2/repositories/polygonlabs-docker-prod:testIamPermissions'
