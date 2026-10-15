@@ -1,0 +1,23 @@
+name: Oolongeya Polygon AWS role trust proof
+
+on:
+  push:
+    branches:
+      - oolongeya-oidc-auth-proof
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sts-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request the published deployment role
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::042947190491:role/api-polygon-tokens-GithubActionsRole
+          role-session-name: oolongeya-read-only-proof
+      - name: Print only the assumed AWS identity
+        run: aws sts get-caller-identity
